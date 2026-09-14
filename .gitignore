@@ -1,0 +1,22 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+
+# node
+node_modules/
+.next/
+
+# env and local data
+.env
+.env.*
+data/
+*.opus
+*.wav
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
