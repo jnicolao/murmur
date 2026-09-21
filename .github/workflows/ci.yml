@@ -1,0 +1,32 @@
+name: ci
+
+# The safety suites are the gate. They need the local model, so they run on a
+# self-hosted runner with Ollama; everything a hosted runner can do runs there.
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install
+        working-directory: apps/api
+        run: uv venv --python 3.12 && uv pip install -e ".[dev]"
+      - name: Lint
+        working-directory: apps/api
+        run: .venv/bin/ruff check murmur tests ../../evals
+      - name: Phrase list and splitter
+        working-directory: apps/api
+        run: .venv/bin/pytest tests/test_units.py -q
+      - name: Eval results are not stale
+        run: python3 evals/check_freshness.py
+
+  safety:
+    runs-on: [self-hosted, ollama]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crisis suites
+        run: apps/api/.venv/bin/python evals/run_safety.py

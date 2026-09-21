@@ -181,7 +181,7 @@ Evals are what separate this from a wrapper. Each has a dataset, a metric, and a
 | Audio affect sanity | CREMA-D subset | Accuracy vs. acted labels | `make eval-affect`, local |
 | Mood estimate vs. truth | Owner's real entries with self-report | Spearman correlation, per week | `make eval-mood`, local |
 | Reply quality | 50 fixed transcripts | LLM-as-judge rubric: reflective, no advice, no diagnosis, brevity, correct use of memory | `make eval-replies`, local, Qwen3 as judge |
-| Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | CI, every push |
+| Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | `make eval-safety`, and CI on a runner with Ollama. Phrase-list and splitter checks run on a hosted runner |
 | Unit and protocol | Segmentation, schema parsing, retrieval | pytest | CI, every push |
 
 Local evals write a JSON result to `evals/results/` which is committed, so the history of every number lives in git. CI runs only what a free GitHub runner can run: safety suites, unit tests, and a check that eval results are not older than the prompt version they claim to measure.
@@ -240,7 +240,19 @@ Two changes came out of the measurement, both from the first risk in section 13:
 
 Langfuse is not wired up yet. Phase 1 has five stages and timings are written straight to JSON, which answers the same question without running a second service. It arrives when there are enough stages to be worth tracing.
 
-**Phase 2 — Safety and persistence (1 week).** Crisis path, system prompt rules, Postgres schema, entry list, delete-everything. Done when: safety suites pass in CI at 100 percent recall and under 5 percent false positives.
+**Phase 2 — Safety and persistence (1 week). Done 2026-09-21.** Crisis path, system prompt rules, Postgres schema, entry list, delete-everything.
+
+The suites pass at **100% recall** on 20 crisis entries and **0% false positives** on 22 ordinary ones. Of the crisis cases, 10 are caught by the phrase list in microseconds and 10 by the classifier, including all 10 indirect ones.
+
+Three things came out of building it:
+
+- **The first classifier missed a quarter of the crisis suite.** Every miss was indirect and calmly worded: goodbye letters, putting affairs in order, researching a method, cancelling future plans, lingering on a bridge. The prompt was rewritten to enumerate recognised warning signs and to say plainly that a missed yes costs more than a wrong yes. That is `crisis-v2`, and it took recall from 75% to 100% without costing a single false positive.
+- **A unit test caught a pattern that never matched.** `cut(?:ing)?` does not match "cutting". A direct statement of self-harm was falling through to the classifier instead of being caught instantly. The model-free tests exist for exactly this.
+- **The latency budget is nearly spent.** Safety sits in the critical path by design, adding about 337 ms. Time-to-first-audio p50 is now 1939 ms against the 2000 ms target, which is 61 ms of headroom. Phase 3 wants to add affect scoring to the same path, so something has to give: run affect in parallel with the reply rather than before it, or accept a slower turn.
+
+**On resources.** Only an international directory ships by default. Local helpline numbers are not hardcoded, because a wrong crisis number is worse than none. They go in `apps/api/resources.json` and are ignored unless marked verified. This answers half of open question 1; the other half still needs a person to pick and check the numbers.
+
+**On Next.js.** Deferred again, to Phase 3. Phase 2's screens are an entry list and a delete button, which is not enough to justify a build step. The mood timeline is.
 
 **Phase 3 — Affect and timeline (2 weeks).** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
 
@@ -273,6 +285,7 @@ The portfolio card stack list changes to: Next.js, FastAPI, Whisper, Qwen3, Koko
 | The affect model weight license is not what Hugging Face says | Medium | Verify before Phase 3. Prosody-only is the fallback. |
 | Safari lacks AudioWorklet or VAD support in some configuration | Low | Develop and demo on Chrome. Note the requirement in the README. |
 | Scope creep toward "companion" | High | Section 2 non-goals and the 60-word reply cap. Every feature request is checked against "is this a journal?" |
+| The latency budget runs out as stages are added | High | Safety already costs 337 ms of the 1939 ms p50. Phase 3 affect scoring must run beside the reply, not before it. |
 | Building this while Harmonizer is unfinished | High | The section 11 gate was set aside on 2026-09-21 and Harmonizer has no commits. Nothing currently mitigates this. |
 
 ---

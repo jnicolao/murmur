@@ -9,23 +9,27 @@
     --indigo: #3D437A;
     --lavender: #C2B6FF;
     --blush: #F5A7A7;
+    --blush-soft: #FBE9E9;
+    --sage: #D6F0E4;
     --ground: #F6F6F6;
     --ink: #2F2F3B;
     --muted: #6B6C80;
     --line: #E2E0EC;
+    --card: #FFFFFF;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--ground); color: var(--ink);
     font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     display: flex; flex-direction: column; align-items: center;
-    padding: 48px 20px; min-height: 100vh;
+    padding: 40px 20px 64px; min-height: 100vh;
   }
-  h1 {
-    font-size: 28px; font-weight: 600; letter-spacing: 0.03em;
-    color: var(--indigo); margin: 0 0 4px;
-  }
-  .tagline { color: var(--muted); font-size: 14px; margin: 0 0 40px; }
+  .wrap { width: 100%; max-width: 620px; }
+  header { text-align: center; margin-bottom: 32px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: 0.03em;
+       color: var(--indigo); margin: 0 0 4px; }
+  .tagline { color: var(--muted); font-size: 14px; margin: 0; }
+  .stage { display: flex; flex-direction: column; align-items: center; }
   #talk {
     width: 132px; height: 132px; border-radius: 50%; border: none;
     background: var(--indigo); color: #fff; font-size: 15px; font-weight: 500;
@@ -35,23 +39,90 @@
   #talk[data-state="recording"] { background: var(--blush); color: var(--ink); }
   #talk[data-state="thinking"] { background: var(--lavender); color: var(--ink); cursor: wait; }
   #talk:disabled { opacity: 0.6; cursor: not-allowed; }
-  #status { color: var(--muted); font-size: 13px; height: 20px; margin-top: 16px; }
-  #log { width: 100%; max-width: 620px; margin-top: 32px; }
-  .turn { border-top: 1px solid var(--line); padding: 18px 0; }
-  .said { margin: 0 0 10px; }
-  .heard { color: var(--muted); font-size: 13px; text-transform: uppercase;
-           letter-spacing: 0.07em; margin: 0 0 4px; }
+  #status { color: var(--muted); font-size: 13px; height: 20px; margin-top: 14px; }
+
+  .turn { background: var(--card); border: 1px solid var(--line);
+          border-radius: 12px; padding: 18px 20px; margin-top: 14px; }
+  .label { color: var(--muted); font-size: 11px; text-transform: uppercase;
+           letter-spacing: 0.08em; margin: 0 0 4px; }
+  .said { margin: 0 0 12px; }
   .reply { color: var(--indigo); margin: 0; }
-  .timing { color: var(--muted); font-size: 12px; margin-top: 10px;
+  .timing { color: var(--muted); font-size: 12px; margin: 12px 0 0;
             font-variant-numeric: tabular-nums; }
+
+  .crisis { background: var(--blush-soft); border-color: var(--blush); }
+  .crisis .reply { color: var(--ink); }
+  .resources { list-style: none; padding: 0; margin: 14px 0 0; }
+  .resources li { padding: 8px 0; border-top: 1px solid var(--blush); }
+  .resources b { display: block; font-weight: 600; }
+  .resources span { color: var(--muted); font-size: 14px; }
+
+  .mood { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+  .mood[hidden] { display: none; }
+  .mood button {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); cursor: pointer; font-size: 14px; color: var(--ink);
+  }
+  .mood button:hover { border-color: var(--indigo); }
+  .mood button[aria-pressed="true"] { background: var(--indigo); color: #fff;
+                                      border-color: var(--indigo); }
+
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+               color: var(--muted); font-weight: 600; margin: 40px 0 10px; }
+  .entry { background: var(--card); border: 1px solid var(--line);
+           border-radius: 10px; padding: 12px 16px; margin-bottom: 8px;
+           display: flex; gap: 12px; align-items: baseline; }
+  .entry .when { color: var(--muted); font-size: 12px; white-space: nowrap;
+                 font-variant-numeric: tabular-nums; }
+  .entry .opening { flex: 1; min-width: 0; overflow: hidden;
+                    text-overflow: ellipsis; white-space: nowrap; }
+  .entry .flag { color: var(--blush); font-size: 12px; }
+  .entry button { border: none; background: none; color: var(--muted);
+                  cursor: pointer; font-size: 13px; padding: 2px 6px; }
+  .entry button:hover { color: var(--blush); }
+
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: 13px; }
+  footer p { margin: 0 0 10px; }
+  #forget { border: 1px solid var(--line); background: none; color: var(--muted);
+            border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #forget:hover { color: var(--blush); border-color: var(--blush); }
 </style>
 </head>
 <body>
-  <h1>murmur</h1>
-  <p class="tagline">A space for your inner voice.</p>
-  <button id="talk" disabled>Loading</button>
-  <div id="status">Waking the models up. This takes a moment the first time.</div>
+<div class="wrap">
+  <header>
+    <h1>murmur</h1>
+    <p class="tagline">A space for your inner voice.</p>
+  </header>
+
+  <div class="stage">
+    <button id="talk" disabled>Loading</button>
+    <div id="status">Waking the models up. This takes a moment the first time.</div>
+    <div class="mood" id="mood" hidden>
+      <span class="label" style="margin:0">How was that?</span>
+      <button data-value="1">1</button><button data-value="2">2</button>
+      <button data-value="3">3</button><button data-value="4">4</button>
+      <button data-value="5">5</button>
+    </div>
+  </div>
+
   <div id="log"></div>
+
+  <section>
+    <h2>Earlier</h2>
+    <div id="entries"></div>
+  </section>
+
+  <footer>
+    <p>
+      Murmur is a journal, not therapy. It is not a substitute for a
+      professional, and no person reads or listens to what you record here.
+      Everything stays on this machine.
+    </p>
+    <button id="forget">Forget everything</button>
+  </footer>
+</div>
 
 <script>
 const PLAYBACK_RATE = 24000;
@@ -60,12 +131,15 @@ const CAPTURE_RATE = 16000;
 const talk = document.getElementById("talk");
 const status = document.getElementById("status");
 const log = document.getElementById("log");
+const entriesEl = document.getElementById("entries");
+const moodEl = document.getElementById("mood");
 
 let socket, captureCtx, playbackCtx, micNode, micStream;
-let state = "idle";          // idle | recording | thinking | speaking
-let playHead = 0;            // when the next audio chunk should start
-let sources = [];            // scheduled audio, so barge-in can stop them
+let state = "idle";
+let playHead = 0;
+let sources = [];
 let turnEl = null;
+let entryId = null;
 
 const workletSource = `
 class Capture extends AudioWorkletProcessor {
@@ -119,8 +193,88 @@ function play(pcmBytes) {
   sources.push(source);
   source.onended = () => {
     sources = sources.filter((s) => s !== source);
-    if (sources.length === 0 && state === "speaking") setState("idle");
+    if (sources.length === 0 && state === "speaking") {
+      setState("idle");
+      moodEl.hidden = false;
+    }
   };
+}
+
+function newTurn(text) {
+  turnEl = document.createElement("div");
+  turnEl.className = "turn";
+  turnEl.innerHTML = `<p class="label">You said</p><p class="said"></p><p class="reply"></p>`;
+  turnEl.querySelector(".said").textContent = text;
+  log.prepend(turnEl);
+}
+
+function showCrisis(message) {
+  if (!turnEl) return;
+  turnEl.classList.add("crisis");
+  turnEl.querySelector(".reply").textContent = message.text;
+  const list = document.createElement("ul");
+  list.className = "resources";
+  for (const resource of message.resources) {
+    const item = document.createElement("li");
+    const label = document.createElement("b");
+    label.textContent = resource.label;
+    const detail = document.createElement("span");
+    detail.textContent = resource.detail;
+    item.append(label, detail);
+    list.append(item);
+  }
+  turnEl.append(list);
+}
+
+async function loadEntries() {
+  const rows = await (await fetch("/entries")).json();
+  entriesEl.replaceChildren();
+  if (rows.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "timing";
+    empty.textContent = "Nothing here yet.";
+    entriesEl.append(empty);
+    return;
+  }
+  for (const row of rows) {
+    const item = document.createElement("div");
+    item.className = "entry";
+
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = new Date(row.started_at).toLocaleDateString(undefined, {
+      month: "short", day: "numeric",
+    });
+
+    const opening = document.createElement("span");
+    opening.className = "opening";
+    opening.textContent = row.summary ?? row.opening ?? `${row.utterances} turns`;
+
+    item.append(when, opening);
+
+    if (row.safety_triggered) {
+      const flag = document.createElement("span");
+      flag.className = "flag";
+      flag.title = "This entry reached the crisis path and is never used as context.";
+      flag.textContent = "held apart";
+      item.append(flag);
+    }
+    if (row.self_mood) {
+      const mood = document.createElement("span");
+      mood.className = "when";
+      mood.textContent = `mood ${row.self_mood}`;
+      item.append(mood);
+    }
+
+    const remove = document.createElement("button");
+    remove.textContent = "Delete";
+    remove.onclick = async () => {
+      await fetch(`/entries/${row.id}`, { method: "DELETE" });
+      loadEntries();
+    };
+    item.append(remove);
+    entriesEl.append(item);
+  }
 }
 
 function connect() {
@@ -138,28 +292,28 @@ function connect() {
       return;
     }
     const message = JSON.parse(event.data);
-    if (message.type === "transcript") {
-      turnEl = document.createElement("div");
-      turnEl.className = "turn";
-      turnEl.innerHTML =
-        `<p class="heard">You said</p><p class="said"></p><p class="reply"></p>`;
-      turnEl.querySelector(".said").textContent = message.text;
-      log.prepend(turnEl);
+    if (message.type === "entry") {
+      entryId = message.id;
+    } else if (message.type === "transcript") {
+      newTurn(message.text);
     } else if (message.type === "reply" && turnEl) {
       const reply = turnEl.querySelector(".reply");
       reply.textContent = (reply.textContent + " " + message.text).trim();
+    } else if (message.type === "crisis") {
+      showCrisis(message);
     } else if (message.type === "done") {
-      if (turnEl && message.timings.ttfa_ms !== null) {
+      if (turnEl && message.timings.ttfa_ms != null) {
         const timing = document.createElement("p");
         timing.className = "timing";
         timing.textContent =
-          `heard in ${message.timings.asr_ms} ms · first audio at ` +
-          `${message.timings.ttfa_ms} ms`;
+          `heard in ${message.timings.asr_ms} ms · checked in ` +
+          `${message.timings.safety_ms} ms · first audio at ${message.timings.ttfa_ms} ms`;
         turnEl.append(timing);
       }
       if (sources.length === 0) setState("idle");
+      loadEntries();
     } else if (message.type === "error") {
-      setState("idle", message.text ?? message.message);
+      setState("idle", message.message);
     }
   };
 }
@@ -182,6 +336,7 @@ async function startRecording() {
     }
   };
   captureCtx.createMediaStreamSource(micStream).connect(micNode);
+  moodEl.hidden = true;
   setState("recording", "Listening. Press again when you are done.");
 }
 
@@ -202,18 +357,42 @@ talk.onclick = async () => {
     socket.send(JSON.stringify({ type: "end" }));
     setState("thinking", "");
   } else if (state === "speaking") {
-    // Barge-in: drop what is queued and stop the server mid-reply.
     stopPlayback();
     socket.send(JSON.stringify({ type: "stop" }));
     setState("idle", "");
+    moodEl.hidden = false;
   }
+};
+
+moodEl.onclick = (event) => {
+  const value = Number(event.target.dataset.value);
+  if (!value) return;
+  for (const button of moodEl.querySelectorAll("button")) {
+    button.setAttribute("aria-pressed", String(Number(button.dataset.value) === value));
+  }
+  socket.send(JSON.stringify({ type: "mood", value }));
+  setTimeout(loadEntries, 150);
+};
+
+document.getElementById("forget").onclick = async () => {
+  const typed = prompt(
+    'This deletes every entry and every recording on this machine. There is no undo.\n\nType "forget everything" to confirm.'
+  );
+  if (typed !== "forget everything") return;
+  await fetch("/forget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm: typed }),
+  });
+  log.replaceChildren();
+  loadEntries();
 };
 
 async function boot() {
   for (let i = 0; i < 120; i++) {
     try {
       const response = await fetch("/health");
-      if ((await response.json()).ok) { connect(); return; }
+      if ((await response.json()).ok) { connect(); loadEntries(); return; }
     } catch {}
     await new Promise((r) => setTimeout(r, 1000));
   }

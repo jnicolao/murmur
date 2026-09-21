@@ -4,10 +4,12 @@ Protocol, client to server:
     binary            Int16 PCM mono at 16 kHz, appended to the current utterance
     {"type":"end"}    the person stopped speaking; run the turn
     {"type":"stop"}   barge-in; abandon whatever is still being spoken
+    {"type":"mood","value":1..5}   the check-in after a session
 
 Protocol, server to client:
     {"type":"transcript","text":...}   what was heard
     {"type":"reply","text":...}        one speech unit, sent just before its audio
+    {"type":"crisis","text":...,"resources":[...]}   the crisis path, not a reply
     binary                             Int16 PCM mono at 24 kHz for that unit
     {"type":"done","timings":{...}}    turn finished
     {"type":"error","message":...}
@@ -24,8 +26,12 @@ from fastapi import WebSocket
 from murmur.audio.asr import SAMPLE_RATE, Transcriber
 from murmur.audio.sentences import stream_sentences
 from murmur.audio.tts import Speaker
-from murmur.llm.client import Ollama
-from murmur.llm.prompts import REFLECT_SYSTEM
+from murmur.llm.client import DEFAULT_MODEL, Ollama
+from murmur.llm.prompts import PROMPT_VERSION, REFLECT_SYSTEM
+from murmur.safety.check import SafetyCheck
+from murmur.safety.classifier import CLASSIFIER_VERSION
+from murmur.safety.response import CRISIS_MESSAGE, resources
+from murmur.store.db import Store
 
 
 def to_float32(pcm: bytes) -> np.ndarray:
@@ -44,13 +50,22 @@ class Session:
         self.transcriber = Transcriber()
         self.speaker = Speaker()
         self.llm = Ollama()
+        self.safety = SafetyCheck(self.llm)
+        self.store = Store()
 
     def warm(self) -> None:
         """Run one tiny turn so the first real one is not paying setup costs."""
         self.transcriber.transcribe(np.zeros(SAMPLE_RATE // 2, dtype=np.float32))
         self.speaker.say("Ready.")
+        self.safety.run("I had a quiet day.")
 
-    async def run_turn(self, websocket: WebSocket, pcm: bytes, cancelled: asyncio.Event) -> None:
+    async def _speak(self, websocket: WebSocket, text: str) -> None:
+        clip = await asyncio.to_thread(self.speaker.say, text)
+        await websocket.send_bytes(to_int16(clip))
+
+    async def run_turn(
+        self, websocket: WebSocket, entry_id: int, pcm: bytes, cancelled: asyncio.Event
+    ) -> None:
         t0 = time.perf_counter()
         audio = to_float32(pcm)
         if audio.size < SAMPLE_RATE // 4:
@@ -64,6 +79,81 @@ class Session:
             return
         await websocket.send_json({"type": "transcript", "text": transcript})
 
+        utterance_id = await asyncio.to_thread(
+            self.store.add_utterance,
+            entry_id,
+            transcript,
+            audio,
+            SAMPLE_RATE,
+            round((t_asr - t0) * 1000),
+        )
+
+        # Safety runs before a single token of reply is generated, so nothing
+        # the model writes can reach someone in crisis.
+        verdict = await asyncio.to_thread(self.safety.run, transcript)
+        t_safety = time.perf_counter()
+
+        if verdict.triggered:
+            await self._crisis(websocket, utterance_id, t0)
+            await websocket.send_json(
+                {
+                    "type": "done",
+                    "crisis": True,
+                    "timings": {
+                        "asr_ms": round((t_asr - t0) * 1000),
+                        "safety_ms": round((t_safety - t_asr) * 1000),
+                        "ttfa_ms": round((time.perf_counter() - t0) * 1000),
+                        "total_ms": round((time.perf_counter() - t0) * 1000),
+                    },
+                }
+            )
+            return
+
+        ttfa_ms, spoken = await self._reflect(websocket, transcript, cancelled, t0)
+
+        await asyncio.to_thread(
+            self.store.add_reply,
+            utterance_id,
+            " ".join(spoken),
+            model=DEFAULT_MODEL,
+            prompt_version=PROMPT_VERSION,
+            latency_ms=round((time.perf_counter() - t0) * 1000),
+        )
+        if ttfa_ms is not None:
+            await asyncio.to_thread(self.store.set_ttfa, utterance_id, ttfa_ms)
+
+        await websocket.send_json(
+            {
+                "type": "done",
+                "cancelled": len(spoken) == 0,
+                "timings": {
+                    "asr_ms": round((t_asr - t0) * 1000),
+                    "safety_ms": round((t_safety - t_asr) * 1000),
+                    "ttfa_ms": ttfa_ms,
+                    "total_ms": round((time.perf_counter() - t0) * 1000),
+                },
+            }
+        )
+
+    async def _crisis(self, websocket: WebSocket, utterance_id: int, t0: float) -> None:
+        """Fixed words, spoken verbatim. The model writes nothing here."""
+        await websocket.send_json(
+            {"type": "crisis", "text": CRISIS_MESSAGE, "resources": resources()}
+        )
+        await self._speak(websocket, CRISIS_MESSAGE)
+        await asyncio.to_thread(
+            self.store.add_reply,
+            utterance_id,
+            CRISIS_MESSAGE,
+            safety_triggered=True,
+            safety_stage="phrase-or-classifier",
+            prompt_version=CLASSIFIER_VERSION,
+            latency_ms=round((time.perf_counter() - t0) * 1000),
+        )
+
+    async def _reflect(
+        self, websocket: WebSocket, transcript: str, cancelled: asyncio.Event, t0: float
+    ) -> tuple[int | None, list[str]]:
         # The model runs on a thread so the socket keeps reading, which is what
         # makes barge-in possible mid-reply.
         queue: asyncio.Queue[str | None] = asyncio.Queue()
@@ -80,8 +170,8 @@ class Session:
 
         producer = asyncio.create_task(asyncio.to_thread(produce))
 
-        ttfa_ms = None
-        spoken = []
+        ttfa_ms: int | None = None
+        spoken: list[str] = []
         while True:
             unit = await queue.get()
             if unit is None or cancelled.is_set():
@@ -95,17 +185,6 @@ class Session:
             if ttfa_ms is None:
                 ttfa_ms = round((time.perf_counter() - t0) * 1000)
 
-        cancelled.set()  # stop the producer if the client went away
+        cancelled.set()
         await producer
-
-        await websocket.send_json(
-            {
-                "type": "done",
-                "cancelled": len(spoken) == 0,
-                "timings": {
-                    "asr_ms": round((t_asr - t0) * 1000),
-                    "ttfa_ms": ttfa_ms,
-                    "total_ms": round((time.perf_counter() - t0) * 1000),
-                },
-            }
-        )
+        return ttfa_ms, spoken

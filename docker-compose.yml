@@ -1,0 +1,22 @@
+# Postgres for Murmur. pgvector is in the image already so Phase 4 does not
+# need a different one. Nothing here is exposed beyond localhost.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: murmur-db
+    environment:
+      POSTGRES_USER: murmur
+      POSTGRES_PASSWORD: murmur
+      POSTGRES_DB: murmur
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - murmur-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U murmur"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  murmur-pgdata:

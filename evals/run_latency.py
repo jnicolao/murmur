@@ -29,6 +29,7 @@ from murmur.audio.sentences import stream_sentences
 from murmur.audio.tts import Speaker
 from murmur.llm.client import DEFAULT_MODEL, Ollama
 from murmur.llm.prompts import PROMPT_VERSION, REFLECT_SYSTEM
+from murmur.safety.check import SafetyCheck
 
 # Realistic journal entries. Nothing here should trip a safety path.
 UTTERANCES = [
@@ -85,12 +86,25 @@ def load_16k(path: Path) -> np.ndarray:
     return audio
 
 
-def run_turn(audio: np.ndarray, transcriber: Transcriber, llm: Ollama, speaker: Speaker) -> dict:
+def run_turn(
+    audio: np.ndarray,
+    transcriber: Transcriber,
+    llm: Ollama,
+    speaker: Speaker,
+    safety: SafetyCheck,
+) -> dict:
     """One full turn. t0 is the moment the user stops speaking."""
     t0 = time.perf_counter()
 
     transcript = transcriber.transcribe(audio)
     t_asr = time.perf_counter()
+
+    # Safety sits in the critical path from Phase 2 on: nothing the model
+    # writes may reach someone in crisis, so the check has to finish first.
+    verdict = safety.run(transcript)
+    t_safety = time.perf_counter()
+    if verdict.triggered:
+        raise RuntimeError(f"fixture tripped the crisis path: {transcript!r}")
 
     first_sentence = None
     t_first_sentence = None
@@ -112,7 +126,8 @@ def run_turn(audio: np.ndarray, transcriber: Transcriber, llm: Ollama, speaker: 
         "transcript": transcript,
         "first_sentence": first_sentence,
         "asr_ms": round((t_asr - t0) * 1000),
-        "llm_first_sentence_ms": round((t_first_sentence - t_asr) * 1000),
+        "safety_ms": round((t_safety - t_asr) * 1000),
+        "llm_first_sentence_ms": round((t_first_sentence - t_safety) * 1000),
         "tts_ms": round((t_first_audio - t_first_sentence) * 1000),
         "ttfa_ms": round((t_first_audio - t0) * 1000),
         "audio_seconds": round(len(audio) / SAMPLE_RATE, 2),
@@ -138,6 +153,7 @@ def main() -> int:
     asr_load = time.perf_counter() - t
 
     llm = Ollama()
+    safety = SafetyCheck(llm)
     print(f"  tts loaded in {tts_load:.1f}s, asr loaded in {asr_load:.1f}s")
 
     paths = build_fixtures(speaker)
@@ -145,16 +161,16 @@ def main() -> int:
 
     # One warm turn so the Ollama model is resident and caches are hot.
     print("warming up...")
-    run_turn(clips[0], transcriber, llm, speaker)
+    run_turn(clips[0], transcriber, llm, speaker, safety)
 
     turns = []
     for i, clip in enumerate(clips):
-        turn = run_turn(clip, transcriber, llm, speaker)
+        turn = run_turn(clip, transcriber, llm, speaker, safety)
         turns.append(turn)
         print(
             f"  [{i + 1}/{len(clips)}] ttfa={turn['ttfa_ms']}ms "
-            f"(asr {turn['asr_ms']} + llm {turn['llm_first_sentence_ms']} + "
-            f"tts {turn['tts_ms']})"
+            f"(asr {turn['asr_ms']} + safety {turn['safety_ms']} + "
+            f"llm {turn['llm_first_sentence_ms']} + tts {turn['tts_ms']})"
         )
 
     ttfa = [t["ttfa_ms"] for t in turns]
@@ -167,6 +183,7 @@ def main() -> int:
         "ttfa_p50_ms": percentile(ttfa, 0.5),
         "ttfa_p95_ms": percentile(ttfa, 0.95),
         "asr_p50_ms": percentile([t["asr_ms"] for t in turns], 0.5),
+        "safety_p50_ms": percentile([t["safety_ms"] for t in turns], 0.5),
         "llm_first_sentence_p50_ms": percentile([t["llm_first_sentence_ms"] for t in turns], 0.5),
         "tts_p50_ms": percentile([t["tts_ms"] for t in turns], 0.5),
         "model_load_seconds": {"tts": round(tts_load, 1), "asr": round(asr_load, 1)},

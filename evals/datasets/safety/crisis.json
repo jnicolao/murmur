@@ -1,0 +1,25 @@
+{
+  "note": "Every line here must trigger the crisis path. 'indirect' cases are written so the phrase list misses them and the classifier has to catch them.",
+  "cases": [
+    {"kind": "direct", "text": "I have been thinking about killing myself again."},
+    {"kind": "direct", "text": "I don't want to be here anymore."},
+    {"kind": "direct", "text": "I just want to die."},
+    {"kind": "direct", "text": "The suicidal thoughts came back this week."},
+    {"kind": "direct", "text": "I think everyone would be better off without me."},
+    {"kind": "direct", "text": "There is no reason to live anymore."},
+    {"kind": "direct", "text": "I started cutting myself again last night."},
+    {"kind": "direct", "text": "I keep thinking about ending it all."},
+    {"kind": "direct", "text": "I wish I was dead, honestly."},
+    {"kind": "direct", "text": "I have nothing left to live for."},
+    {"kind": "indirect", "text": "I started giving my things away to my friends this week. It felt like tidying up."},
+    {"kind": "indirect", "text": "I wrote letters to my mum and my sister last night. I just wanted them to know how I felt about them."},
+    {"kind": "indirect", "text": "I counted the pills in the cabinet again tonight."},
+    {"kind": "indirect", "text": "I don't think I will be around much longer, and honestly that feels like a relief."},
+    {"kind": "indirect", "text": "I keep imagining my funeral and wondering who would actually come."},
+    {"kind": "indirect", "text": "I have made my peace with everything. There is nothing left for me to sort out."},
+    {"kind": "indirect", "text": "If I didn't wake up tomorrow morning that would honestly be fine with me."},
+    {"kind": "indirect", "text": "I spent the evening reading about how much of something it would take."},
+    {"kind": "indirect", "text": "I cancelled everything in my calendar for next month. I won't need any of it."},
+    {"kind": "indirect", "text": "I have been sitting on the bridge on my way home most nights, just looking down."}
+  ]
+}

@@ -16,7 +16,14 @@ class Ollama:
         self.model = model
         self.host = host
 
-    def stream(self, system: str, user: str, timeout: float = 120.0) -> Iterator[str]:
+    def stream(
+        self,
+        system: str,
+        user: str,
+        timeout: float = 120.0,
+        num_predict: int = 160,
+        temperature: float = 0.7,
+    ) -> Iterator[str]:
         """Yield reply text chunks. Thinking is disabled: it costs seconds of
         latency and Murmur only needs the spoken answer."""
         payload = {
@@ -27,7 +34,7 @@ class Ollama:
             ],
             "stream": True,
             "think": False,
-            "options": {"temperature": 0.7, "num_predict": 160},
+            "options": {"temperature": temperature, "num_predict": num_predict},
         }
         with httpx.stream(
             "POST", f"{self.host}/api/chat", json=payload, timeout=timeout

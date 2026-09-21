@@ -1,0 +1,8 @@
+[
+  {
+    "label": "Replace with a local crisis line",
+    "detail": "Number or website",
+    "verified": false,
+    "_note": "Entries are ignored until verified is true. Check the number yourself, by calling it, before setting that. A wrong crisis number is worse than none."
+  }
+]
