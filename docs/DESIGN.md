@@ -99,7 +99,7 @@ A fully in-browser pipeline (transformers.js Whisper, WebLLM, kokoro-js on WebGP
 | Browser VAD | Silero VAD via `@ricky0123/vad-web` | MIT / ISC | ONNX Runtime Web |
 | Charts | Recharts | MIT | |
 | API | FastAPI, uvicorn, websockets | MIT | |
-| ASR | faster-whisper, Whisper `small.en` | MIT (code and weights) | Upgrade path: NVIDIA Parakeet-TDT 0.6B (CC-BY-4.0) if latency needs work |
+| ASR | faster-whisper, Whisper `base.en` | MIT (code and weights) | Was `small.en`. Measured 2026-09-21: `base.en` averages 388 ms against 1353 ms for `small.en`, with identical transcripts on clean speech. Recheck against real recordings. Upgrade path: NVIDIA Parakeet-TDT 0.6B (CC-BY-4.0) |
 | Server VAD | Silero VAD | MIT | |
 | LLM | Qwen3-8B via Ollama | Apache-2.0 / MIT | Qwen3-4B if the 8B is too slow alongside the other models |
 | TTS | Kokoro-82M | Apache-2.0 | Runs on CPU faster than real time |
@@ -201,16 +201,16 @@ Every turn is a Langfuse trace with spans for VAD, ASR, affect, safety, retrieva
 ```
 murmur/
 ├── apps/
-│   ├── web/              # Next.js
+│   ├── web/              # Next.js, from Phase 2
 │   └── api/              # FastAPI
 │       ├── murmur/
-│       │   ├── audio/    # vad, asr, tts, prosody
-│       │   ├── affect/   # audio model, text schema, fusion
-│       │   ├── safety/   # phrase list, classifier, fixed message
-│       │   ├── memory/   # embeddings, retrieval
+│       │   ├── audio/    # asr, tts, sentence splitting  (vad, prosody later)
 │       │   ├── llm/      # ollama client, prompts (versioned)
-│       │   └── ws/       # protocol, session loop
+│       │   ├── ws/       # protocol, session loop
+│       │   ├── static/   # the Phase 1 client, one page
+│       │   └── app.py
 │       └── tests/
+│       # affect/, safety/, memory/ arrive with the phase that needs them
 ├── evals/
 │   ├── datasets/         # CREMA-D subset manifest, phrase suites, fixed transcripts
 │   ├── results/          # committed JSON, one file per eval per run
@@ -229,7 +229,16 @@ murmur/
 
 Each phase ends with something that runs and one number that is measured.
 
-**Phase 1 — The loop (2 weeks).** Press to talk, transcript, streamed spoken reply, barge-in. No memory, no affect, no persistence beyond a session log. Done when: time-to-first-audio p50 under 2 s on the M2 Pro, measured from Langfuse spans.
+**Phase 1 — The loop (2 weeks). Done 2026-09-21.** Press to talk, transcript, streamed spoken reply, barge-in. No memory, no affect, no persistence beyond a session log.
+
+Measured on the M2 Pro: time-to-first-audio p50 **1836 ms** against a 2000 ms target, p95 2517 ms. Breakdown at p50: transcription 399 ms, model to first speech unit 732 ms, synthesis 729 ms. Numbers come from `evals/run_latency.py` and land in `evals/results/`. The run is five turns, so treat p50 as the real signal and p95 as little more than the worst of five.
+
+Two changes came out of the measurement, both from the first risk in section 13:
+
+- **ASR was half the budget.** `small.en` took 1212 ms per utterance. `base.en` takes 371 ms and produced identical transcripts on the fixtures. `base.en` is now the default. The fixtures are synthesised speech and therefore easy, so this needs rechecking once real recordings exist.
+- **A long first sentence delayed the first sound by over a second.** Kokoro returns no audio until a whole unit is synthesised, so the splitter now cuts a long run at a clause boundary rather than waiting for the full stop. Later units keep arriving while the first one plays.
+
+Langfuse is not wired up yet. Phase 1 has five stages and timings are written straight to JSON, which answers the same question without running a second service. It arrives when there are enough stages to be worth tracing.
 
 **Phase 2 — Safety and persistence (1 week).** Crisis path, system prompt rules, Postgres schema, entry list, delete-everything. Done when: safety suites pass in CI at 100 percent recall and under 5 percent false positives.
 
@@ -239,7 +248,7 @@ Each phase ends with something that runs and one number that is measured.
 
 **Phase 5 — After v1, pick one.** Browser-only WebGPU runtime for a hosted live demo; encrypted vault with SQLCipher or pgcrypto; nightly wind-down mode; Flutter app.
 
-Sequencing against Harmonizer: Phase 1 does not start until Harmonizer v1 is shippable. Total v1 estimate is seven weeks of part-time work.
+Sequencing against Harmonizer: the original plan gated Phase 1 on Harmonizer v1 shipping. Set aside on 2026-09-21 by choice, with Harmonizer still unstarted. The risk that neither project finishes is unchanged and is the one in section 13 worth watching.
 
 ---
 
@@ -264,7 +273,7 @@ The portfolio card stack list changes to: Next.js, FastAPI, Whisper, Qwen3, Koko
 | The affect model weight license is not what Hugging Face says | Medium | Verify before Phase 3. Prosody-only is the fallback. |
 | Safari lacks AudioWorklet or VAD support in some configuration | Low | Develop and demo on Chrome. Note the requirement in the README. |
 | Scope creep toward "companion" | High | Section 2 non-goals and the 60-word reply cap. Every feature request is checked against "is this a journal?" |
-| Building this while Harmonizer is unfinished | High | Section 11 gate: Phase 1 starts only after Harmonizer v1 ships. |
+| Building this while Harmonizer is unfinished | High | The section 11 gate was set aside on 2026-09-21 and Harmonizer has no commits. Nothing currently mitigates this. |
 
 ---
 

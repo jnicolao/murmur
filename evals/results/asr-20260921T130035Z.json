@@ -1,0 +1,28 @@
+{
+  "ran_at": "2026-09-21T13:00:35+00:00",
+  "clips": 5,
+  "note": "Ground truth is exact; fixtures are synthesised from known text.",
+  "models": [
+    {
+      "model": "tiny.en",
+      "load_seconds": 0.4,
+      "mean_ms": 184,
+      "max_ms": 204,
+      "mean_wer": 0.0
+    },
+    {
+      "model": "base.en",
+      "load_seconds": 0.4,
+      "mean_ms": 388,
+      "max_ms": 392,
+      "mean_wer": 0.0
+    },
+    {
+      "model": "small.en",
+      "load_seconds": 0.9,
+      "mean_ms": 1353,
+      "max_ms": 1717,
+      "mean_wer": 0.0
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>murmur</title>
+<style>
+  :root {
+    --indigo: #3D437A;
+    --lavender: #C2B6FF;
+    --blush: #F5A7A7;
+    --ground: #F6F6F6;
+    --ink: #2F2F3B;
+    --muted: #6B6C80;
+    --line: #E2E0EC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 48px 20px; min-height: 100vh;
+  }
+  h1 {
+    font-size: 28px; font-weight: 600; letter-spacing: 0.03em;
+    color: var(--indigo); margin: 0 0 4px;
+  }
+  .tagline { color: var(--muted); font-size: 14px; margin: 0 0 40px; }
+  #talk {
+    width: 132px; height: 132px; border-radius: 50%; border: none;
+    background: var(--indigo); color: #fff; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: background 120ms, transform 120ms;
+  }
+  #talk:hover { transform: scale(1.02); }
+  #talk[data-state="recording"] { background: var(--blush); color: var(--ink); }
+  #talk[data-state="thinking"] { background: var(--lavender); color: var(--ink); cursor: wait; }
+  #talk:disabled { opacity: 0.6; cursor: not-allowed; }
+  #status { color: var(--muted); font-size: 13px; height: 20px; margin-top: 16px; }
+  #log { width: 100%; max-width: 620px; margin-top: 32px; }
+  .turn { border-top: 1px solid var(--line); padding: 18px 0; }
+  .said { margin: 0 0 10px; }
+  .heard { color: var(--muted); font-size: 13px; text-transform: uppercase;
+           letter-spacing: 0.07em; margin: 0 0 4px; }
+  .reply { color: var(--indigo); margin: 0; }
+  .timing { color: var(--muted); font-size: 12px; margin-top: 10px;
+            font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <h1>murmur</h1>
+  <p class="tagline">A space for your inner voice.</p>
+  <button id="talk" disabled>Loading</button>
+  <div id="status">Waking the models up. This takes a moment the first time.</div>
+  <div id="log"></div>
+
+<script>
+const PLAYBACK_RATE = 24000;
+const CAPTURE_RATE = 16000;
+
+const talk = document.getElementById("talk");
+const status = document.getElementById("status");
+const log = document.getElementById("log");
+
+let socket, captureCtx, playbackCtx, micNode, micStream;
+let state = "idle";          // idle | recording | thinking | speaking
+let playHead = 0;            // when the next audio chunk should start
+let sources = [];            // scheduled audio, so barge-in can stop them
+let turnEl = null;
+
+const workletSource = `
+class Capture extends AudioWorkletProcessor {
+  process(inputs) {
+    const channel = inputs[0][0];
+    if (channel) this.port.postMessage(new Float32Array(channel));
+    return true;
+  }
+}
+registerProcessor("capture", Capture);
+`;
+
+function setState(next, message) {
+  state = next;
+  talk.dataset.state = next;
+  talk.textContent =
+    next === "recording" ? "Stop" :
+    next === "thinking"  ? "Thinking" :
+    next === "speaking"  ? "Interrupt" : "Talk";
+  talk.disabled = next === "thinking";
+  status.textContent = message ?? "";
+}
+
+function toInt16(samples) {
+  const out = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function stopPlayback() {
+  for (const source of sources) { try { source.stop(); } catch {} }
+  sources = [];
+  playHead = 0;
+}
+
+function play(pcmBytes) {
+  const pcm = new Int16Array(pcmBytes);
+  const buffer = playbackCtx.createBuffer(1, pcm.length, PLAYBACK_RATE);
+  const channel = buffer.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 32768;
+
+  const source = playbackCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(playbackCtx.destination);
+  const startAt = Math.max(playbackCtx.currentTime, playHead);
+  source.start(startAt);
+  playHead = startAt + buffer.duration;
+  sources.push(source);
+  source.onended = () => {
+    sources = sources.filter((s) => s !== source);
+    if (sources.length === 0 && state === "speaking") setState("idle");
+  };
+}
+
+function connect() {
+  const scheme = location.protocol === "https:" ? "wss" : "ws";
+  socket = new WebSocket(`${scheme}://${location.host}/ws`);
+  socket.binaryType = "arraybuffer";
+
+  socket.onopen = () => setState("idle", "");
+  socket.onclose = () => { talk.disabled = true; status.textContent = "Disconnected."; };
+
+  socket.onmessage = (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      setState("speaking");
+      play(event.data);
+      return;
+    }
+    const message = JSON.parse(event.data);
+    if (message.type === "transcript") {
+      turnEl = document.createElement("div");
+      turnEl.className = "turn";
+      turnEl.innerHTML =
+        `<p class="heard">You said</p><p class="said"></p><p class="reply"></p>`;
+      turnEl.querySelector(".said").textContent = message.text;
+      log.prepend(turnEl);
+    } else if (message.type === "reply" && turnEl) {
+      const reply = turnEl.querySelector(".reply");
+      reply.textContent = (reply.textContent + " " + message.text).trim();
+    } else if (message.type === "done") {
+      if (turnEl && message.timings.ttfa_ms !== null) {
+        const timing = document.createElement("p");
+        timing.className = "timing";
+        timing.textContent =
+          `heard in ${message.timings.asr_ms} ms · first audio at ` +
+          `${message.timings.ttfa_ms} ms`;
+        turnEl.append(timing);
+      }
+      if (sources.length === 0) setState("idle");
+    } else if (message.type === "error") {
+      setState("idle", message.text ?? message.message);
+    }
+  };
+}
+
+async function startRecording() {
+  if (!captureCtx) {
+    captureCtx = new AudioContext({ sampleRate: CAPTURE_RATE });
+    await captureCtx.audioWorklet.addModule(
+      URL.createObjectURL(new Blob([workletSource], { type: "text/javascript" }))
+    );
+  }
+  await captureCtx.resume();
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+  });
+  micNode = new AudioWorkletNode(captureCtx, "capture");
+  micNode.port.onmessage = (event) => {
+    if (state === "recording" && socket.readyState === WebSocket.OPEN) {
+      socket.send(toInt16(event.data).buffer);
+    }
+  };
+  captureCtx.createMediaStreamSource(micStream).connect(micNode);
+  setState("recording", "Listening. Press again when you are done.");
+}
+
+function stopRecording() {
+  micNode?.port.close();
+  micNode?.disconnect();
+  micStream?.getTracks().forEach((track) => track.stop());
+  micNode = micStream = null;
+}
+
+talk.onclick = async () => {
+  if (state === "idle") {
+    playbackCtx ??= new AudioContext({ sampleRate: PLAYBACK_RATE });
+    await playbackCtx.resume();
+    await startRecording();
+  } else if (state === "recording") {
+    stopRecording();
+    socket.send(JSON.stringify({ type: "end" }));
+    setState("thinking", "");
+  } else if (state === "speaking") {
+    // Barge-in: drop what is queued and stop the server mid-reply.
+    stopPlayback();
+    socket.send(JSON.stringify({ type: "stop" }));
+    setState("idle", "");
+  }
+};
+
+async function boot() {
+  for (let i = 0; i < 120; i++) {
+    try {
+      const response = await fetch("/health");
+      if ((await response.json()).ok) { connect(); return; }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  status.textContent = "The server did not come up.";
+}
+boot();
+</script>
+</body>
+</html>
