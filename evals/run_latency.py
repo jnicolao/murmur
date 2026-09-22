@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ import soundfile as sf
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps" / "api"))
 
+from murmur.affect import prosody
 from murmur.audio.asr import DEFAULT_MODEL as ASR_MODEL
 from murmur.audio.asr import SAMPLE_RATE, Transcriber
 from murmur.audio.sentences import stream_sentences
@@ -99,6 +101,16 @@ def run_turn(
     transcript = transcriber.transcribe(audio)
     t_asr = time.perf_counter()
 
+    # Prosody runs beside the reply exactly as the server runs it, so its CPU
+    # contention shows up in this number rather than hiding from it.
+    measured: dict = {}
+
+    def measure() -> None:
+        measured["prosody"] = prosody.extract(audio, SAMPLE_RATE, len(transcript.split()))
+
+    measuring = threading.Thread(target=measure)
+    measuring.start()
+
     # Safety sits in the critical path from Phase 2 on: nothing the model
     # writes may reach someone in crisis, so the check has to finish first.
     verdict = safety.run(transcript)
@@ -121,6 +133,7 @@ def run_turn(
 
     reply_audio = speaker.say(first_sentence)
     t_first_audio = time.perf_counter()
+    measuring.join()
 
     return {
         "transcript": transcript,
@@ -130,6 +143,8 @@ def run_turn(
         "llm_first_sentence_ms": round((t_first_sentence - t_safety) * 1000),
         "tts_ms": round((t_first_audio - t_first_sentence) * 1000),
         "ttfa_ms": round((t_first_audio - t0) * 1000),
+        "prosody_ok": measured.get("prosody") is not None
+        and measured["prosody"].pitch_mean is not None,
         "audio_seconds": round(len(audio) / SAMPLE_RATE, 2),
         "reply_audio_seconds": round(len(reply_audio) / 24_000, 2),
     }
