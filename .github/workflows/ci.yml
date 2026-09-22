@@ -1,7 +1,11 @@
 name: ci
 
-# The safety suites are the gate. They need the local model, so they run on a
-# self-hosted runner with Ollama; everything a hosted runner can do runs there.
+# What runs here is everything a hosted runner can actually do. The crisis
+# suites need Ollama and a 5 GB model, which a free runner cannot provide, so
+# CI gates on the committed evidence instead: check_freshness.py fails the
+# build when the committed safety result is older than the current classifier
+# version or does not meet its thresholds. Run `make eval-safety` locally and
+# commit the result before changing anything in safety/.
 on:
   push:
   pull_request:
@@ -11,22 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: Install
         working-directory: apps/api
         run: uv venv --python 3.12 && uv pip install -e ".[dev]"
+
       - name: Lint
         working-directory: apps/api
         run: .venv/bin/ruff check murmur tests ../../evals
+
+      - name: Format
+        working-directory: apps/api
+        run: .venv/bin/ruff format --check murmur tests ../../evals
+
       - name: Phrase list and splitter
         working-directory: apps/api
-        run: .venv/bin/pytest tests/test_units.py -q
-      - name: Eval results are not stale
-        run: python3 evals/check_freshness.py
+        run: .venv/bin/pytest -q
 
-  safety:
-    runs-on: [self-hosted, ollama]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Crisis suites
-        run: apps/api/.venv/bin/python evals/run_safety.py
+      - name: Safety results are current
+        run: apps/api/.venv/bin/python evals/check_freshness.py
