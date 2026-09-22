@@ -5,7 +5,7 @@ RUFF := apps/api/.venv/bin/ruff
 .PHONY: setup db run test units eval eval-asr eval-safety lint
 
 setup:
-	cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]" && uv pip install websockets
+	cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]"
 	ollama pull qwen3:8b
 
 db:

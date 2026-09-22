@@ -36,6 +36,12 @@ the current classifier version. That is deliberate. A prompt change shipping
 with numbers describing a classifier that no longer runs is the failure it
 exists to prevent.
 
+This matters more than it looks, because **CI cannot run the crisis suites**.
+They need Ollama and a 5 GB model, and a free hosted runner has neither. CI
+runs the linter, the formatter, the model-free tests, and the freshness
+check. The crisis suites themselves run on your machine, and the freshness
+check is what stops a stale result from passing for a current one.
+
 ## Things that are not negotiable
 
 - **The crisis check runs before any reply token is generated.** Not beside
