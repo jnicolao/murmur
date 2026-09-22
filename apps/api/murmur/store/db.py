@@ -23,6 +23,7 @@ AUDIO_ROOT = Path(os.environ.get("MURMUR_AUDIO", Path.home() / ".murmur" / "audi
 KEEP_AUDIO = os.environ.get("MURMUR_KEEP_AUDIO", "1") != "0"
 
 SCHEMA = Path(__file__).resolve().parent / "schema.sql"
+MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
 
 class Store:
@@ -30,6 +31,25 @@ class Store:
         self.dsn = dsn
         self.connection = psycopg.connect(dsn, autocommit=True, row_factory=dict_row)
         self.connection.execute(SCHEMA.read_text())
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Apply any migration not yet recorded, in filename order."""
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            "name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+        )
+        done = {
+            row["name"]
+            for row in self.connection.execute("SELECT name FROM schema_migrations").fetchall()
+        }
+        for path in sorted(MIGRATIONS.glob("*.sql")):
+            if path.name in done:
+                continue
+            self.connection.execute(path.read_text())
+            self.connection.execute(
+                "INSERT INTO schema_migrations (name) VALUES (%s)", (path.name,)
+            )
 
     def close(self) -> None:
         self.connection.close()
@@ -125,6 +145,20 @@ class Store:
             ),
         ).fetchone()
         return row["id"]
+
+    def set_prosody(self, utterance_id: int, values: dict) -> None:
+        """Written after the reply has been spoken, so it costs the turn nothing."""
+        self.connection.execute(
+            "UPDATE utterances SET pitch_mean = %(pitch_mean)s, "
+            "pitch_range = %(pitch_range)s, speech_rate = %(speech_rate)s, "
+            "pause_ratio = %(pause_ratio)s WHERE id = %(id)s",
+            {**values, "id": utterance_id},
+        )
+
+    def utterance(self, utterance_id: int) -> dict | None:
+        return self.connection.execute(
+            "SELECT * FROM utterances WHERE id = %s", (utterance_id,)
+        ).fetchone()
 
     def set_ttfa(self, utterance_id: int, ttfa_ms: int) -> None:
         self.connection.execute(

@@ -104,7 +104,7 @@ A fully in-browser pipeline (transformers.js Whisper, WebLLM, kokoro-js on WebGP
 | LLM | Qwen3-8B via Ollama | Apache-2.0 / MIT | Qwen3-4B if the 8B is too slow alongside the other models |
 | TTS | Kokoro-82M | Apache-2.0 | Runs on CPU faster than real time |
 | Audio affect | SpeechBrain `emotion-recognition-wav2vec2-IEMOCAP` | Apache-2.0 | Verify the weight license on Hugging Face before shipping; fallback is prosody-only |
-| Prosody | librosa (pyin pitch), numpy | ISC / BSD | |
+| Prosody | librosa (`yin` pitch, RMS energy), numpy | ISC / BSD | Was `pyin`. Measured 2026-09-22: `pyin` takes about 37 s for a 6.5 s clip, `yin` takes 8 ms. An energy-based voicing mask replaces `pyin`'s voicing probabilities |
 | Embeddings | bge-m3 via sentence-transformers | MIT / Apache-2.0 | Same as Harmonizer |
 | Database | Postgres 16 + pgvector | PostgreSQL license | Docker compose |
 | Observability | Langfuse, self-hosted | MIT (core) | Same as Harmonizer |
@@ -137,9 +137,10 @@ Raw audio lives on disk under a per-entry folder. Deleting an entry deletes its 
 
 Two signals are estimated per utterance and one is reported by the user.
 
-- **Text affect**: valence and arousal on a -1 to 1 scale plus labels, from the LLM's structured output.
-- **Audio affect**: categorical output from the wav2vec2 model mapped to the same valence/arousal space, plus raw prosody features.
-- **Self-report**: the 1 to 5 check-in after each session. This is the ground truth.
+- **Text affect**: valence and arousal on a -1 to 1 scale plus labels, from the LLM's structured output. Not built yet.
+- **Audio affect**: categorical output from the wav2vec2 model mapped to the same valence/arousal space. Not built yet, and gated on confirming the weight licence.
+- **Prosody**: pitch median and spread, speech rate, and pause ratio, straight from the waveform. Built 2026-09-22.
+- **Self-report**: the 1 to 5 check-in after each session. This is the ground truth. Built in Phase 2.
 
 The timeline shows self-report as the primary line and the estimated valence as a secondary line. The product never tells the user "you are sad." It says things like "you sounded flatter this week than last," and only when the fused estimate and the self-report agree in direction. Where they disagree, the chart shows both and says nothing.
 
@@ -254,7 +255,14 @@ Three things came out of building it:
 
 **On Next.js.** Deferred again, to Phase 3. Phase 2's screens are an entry list and a delete button, which is not enough to justify a build step. The mood timeline is.
 
-**Phase 3 — Affect and timeline (2 weeks).** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
+**Phase 3 — Affect and timeline (2 weeks). In progress.** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart.
+
+Prosody landed 2026-09-22. Two assumptions in this document were wrong and were corrected by measuring:
+
+- **`pyin` is unusable.** It takes about 37 seconds for a 6.5 second clip. `yin` plus an energy-based voicing mask produces the same four features in 7 milliseconds.
+- **Word timestamps are not free.** This document assumed speech rate would come from timestamps faster-whisper "already returns". Word-level timing costs about 40 milliseconds and sits in the critical path, where roughly 60 milliseconds of headroom remains. Speech rate is derived from voiced duration instead, so transcription is untouched.
+
+Prosody runs on a worker thread started after transcription and collected after the reply has been spoken, so it never delays the first audio. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
 
 **Phase 4 — Memory and evals (2 weeks).** pgvector retrieval, memory in the prompt, reply-quality judge, ASR and latency evals, results committed. Done when: every row in the eval table has a number in git and the README shows them.
 
