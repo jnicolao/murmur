@@ -155,6 +155,14 @@ class Store:
             {**values, "id": utterance_id},
         )
 
+    def set_text_affect(self, utterance_id: int, values: dict) -> None:
+        self.connection.execute(
+            "UPDATE utterances SET valence_text = %(valence_text)s, "
+            "arousal_text = %(arousal_text)s, labels_text = %(labels_text)s "
+            "WHERE id = %(id)s",
+            {**values, "id": utterance_id},
+        )
+
     def utterance(self, utterance_id: int) -> dict | None:
         return self.connection.execute(
             "SELECT * FROM utterances WHERE id = %s", (utterance_id,)

@@ -137,7 +137,7 @@ Raw audio lives on disk under a per-entry folder. Deleting an entry deletes its 
 
 Two signals are estimated per utterance and one is reported by the user.
 
-- **Text affect**: valence and arousal on a -1 to 1 scale plus labels, from the LLM's structured output. Not built yet.
+- **Text affect**: valence and arousal on a -1 to 1 scale plus labels, from the model's structured output. Built 2026-09-24. The block trails the spoken reply behind a sentinel, so it costs no extra call and cannot reach the speech synthesiser.
 - **Audio affect**: categorical output from the wav2vec2 model mapped to the same valence/arousal space. Not built yet, and gated on confirming the weight licence.
 - **Prosody**: pitch median and spread, speech rate, and pause ratio, straight from the waveform. Built 2026-09-22.
 - **Self-report**: the 1 to 5 check-in after each session. This is the ground truth. Built in Phase 2.
@@ -181,7 +181,7 @@ Evals are what separate this from a wrapper. Each has a dataset, a metric, and a
 | ASR and loop latency | Same recordings replayed | p50 / p95 ASR ms, time-to-first-audio | `make eval-latency`, local |
 | Audio affect sanity | CREMA-D subset | Accuracy vs. acted labels | `make eval-affect`, local |
 | Mood estimate vs. truth | Owner's real entries with self-report | Spearman correlation, per week | `make eval-mood`, local |
-| Reply quality | 50 fixed transcripts | LLM-as-judge rubric: reflective, no advice, no diagnosis, brevity, correct use of memory | `make eval-replies`, local, Qwen3 as judge |
+| Reply quality | 24 fixed transcripts | Judge rubric: reflective, no advice, no diagnosis, stays a journal, one question, speakable | `make eval-replies`, local, Qwen3 as judge |
 | Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | `make eval-safety`, and CI on a runner with Ollama. Phrase-list and splitter checks run on a hosted runner |
 | Unit and protocol | Segmentation, schema parsing, retrieval | pytest | CI, every push |
 
@@ -262,7 +262,23 @@ Prosody landed 2026-09-22. Two assumptions in this document were wrong and were 
 - **`pyin` is unusable.** It takes about 37 seconds for a 6.5 second clip. `yin` plus an energy-based voicing mask produces the same four features in 7 milliseconds.
 - **Word timestamps are not free.** This document assumed speech rate would come from timestamps faster-whisper "already returns". Word-level timing costs about 40 milliseconds and sits in the critical path, where roughly 60 milliseconds of headroom remains. Speech rate is derived from voiced duration instead, so transcription is untouched.
 
-Prosody runs on a worker thread started after transcription and collected after the reply has been spoken, so it never delays the first audio. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
+Prosody runs on a worker thread started after transcription and collected after the reply has been spoken, so it never delays the first audio.
+
+Text affect landed 2026-09-24. The model returns valence, arousal and up to two labels after the spoken reply, behind a `<affect>` sentinel that is stripped before the splitter sees it. No extra call, no extra model, and nothing structured can reach the audio.
+
+The risk was that asking for structure would degrade the reply, which is the actual product. A reply-quality eval was built first so there was a baseline to compare against, and it is now the second thing the freshness check gates on:
+
+| | reflect-v1 | reflect-v2 |
+|---|---|---|
+| Reflective | 96% | 100% |
+| No advice | 83% | 83% |
+| One question at most | 96% | 100% |
+| Speakable, no leaked markup | 100% | 100% |
+| Fully clean | 83% | 83% |
+| Median words | 24 | 25 |
+| Affect block returned | not applicable | 100% |
+
+Nothing regressed and the block comes back every time. With 24 transcripts a four point move is a single reply, so the claim worth making is that quality held, not that it improved. Giving advice remains the weakest rule at 83%, unchanged by this work and worth its own issue. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
 
 **Phase 4 — Memory and evals (2 weeks).** pgvector retrieval, memory in the prompt, reply-quality judge, ASR and latency evals, results committed. Done when: every row in the eval table has a number in git and the README shows them.
 

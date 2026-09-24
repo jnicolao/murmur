@@ -2,7 +2,7 @@ PY := apps/api/.venv/bin/python
 UVICORN := apps/api/.venv/bin/uvicorn
 RUFF := apps/api/.venv/bin/ruff
 
-.PHONY: setup db run test units eval eval-asr eval-safety lint
+.PHONY: setup db run test units eval eval-asr eval-safety eval-replies lint
 
 setup:
 	cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]"
@@ -29,6 +29,9 @@ eval-asr:
 eval-safety:
 	$(PY) evals/run_safety.py
 	$(PY) evals/check_freshness.py
+
+eval-replies:
+	$(PY) evals/run_replies.py
 
 lint:
 	$(RUFF) check apps/api/murmur apps/api/tests evals

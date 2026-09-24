@@ -29,6 +29,7 @@ from murmur.audio.sentences import stream_sentences
 from murmur.audio.tts import Speaker
 from murmur.llm.client import DEFAULT_MODEL, Ollama
 from murmur.llm.prompts import PROMPT_VERSION, REFLECT_SYSTEM
+from murmur.llm.reply import EMPTY_ROW, ReplyStream
 from murmur.safety.check import SafetyCheck
 from murmur.safety.classifier import CLASSIFIER_VERSION
 from murmur.safety.response import CRISIS_MESSAGE, resources
@@ -122,7 +123,7 @@ class Session:
             )
             return
 
-        ttfa_ms, spoken = await self._reflect(websocket, transcript, cancelled, t0)
+        ttfa_ms, spoken, affect = await self._reflect(websocket, transcript, cancelled, t0)
 
         await asyncio.to_thread(
             self.store.add_reply,
@@ -134,6 +135,11 @@ class Session:
         )
         if ttfa_ms is not None:
             await asyncio.to_thread(self.store.set_ttfa, utterance_id, ttfa_ms)
+        await asyncio.to_thread(
+            self.store.set_text_affect,
+            utterance_id,
+            affect.as_row() if affect else EMPTY_ROW,
+        )
         await measuring
 
         await websocket.send_json(
@@ -177,15 +183,18 @@ class Session:
 
     async def _reflect(
         self, websocket: WebSocket, transcript: str, cancelled: asyncio.Event, t0: float
-    ) -> tuple[int | None, list[str]]:
+    ) -> tuple[int | None, list[str], object | None]:
         # The model runs on a thread so the socket keeps reading, which is what
         # makes barge-in possible mid-reply.
         queue: asyncio.Queue[str | None] = asyncio.Queue()
         loop = asyncio.get_running_loop()
+        # The affect block trails the spoken reply and is peeled off here, so
+        # no structured output can ever reach the speech synthesiser.
+        stream = ReplyStream(self.llm.stream(REFLECT_SYSTEM, transcript))
 
         def produce() -> None:
             try:
-                for unit in stream_sentences(self.llm.stream(REFLECT_SYSTEM, transcript)):
+                for unit in stream_sentences(stream.spoken()):
                     if cancelled.is_set():
                         break
                     loop.call_soon_threadsafe(queue.put_nowait, unit)
@@ -211,4 +220,4 @@ class Session:
 
         cancelled.set()
         await producer
-        return ttfa_ms, spoken
+        return ttfa_ms, spoken, stream.affect

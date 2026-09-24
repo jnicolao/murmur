@@ -21,11 +21,12 @@ class Ollama:
         system: str,
         user: str,
         timeout: float = 120.0,
-        num_predict: int = 160,
+        num_predict: int = 220,
         temperature: float = 0.7,
     ) -> Iterator[str]:
         """Yield reply text chunks. Thinking is disabled: it costs seconds of
-        latency and Murmur only needs the spoken answer."""
+        latency and Murmur only needs the spoken answer. The budget allows for
+        the trailing affect block as well as the reply itself."""
         payload = {
             "model": self.model,
             "messages": [
