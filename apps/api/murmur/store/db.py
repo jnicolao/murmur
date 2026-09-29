@@ -186,6 +186,48 @@ class Store:
             (entry_id,),
         ).fetchall()
 
+    # the timeline ----------------------------------------------------------
+
+    def daily_mood(self, days: int = 90) -> list[dict]:
+        """One point per day: what was reported and what was estimated.
+
+        Crisis entries are excluded. They are held apart from everything that
+        looks backwards, and a spike on a chart is not what someone needs to
+        meet again weeks later.
+        """
+        return self.connection.execute(
+            """
+            SELECT (u.created_at AT TIME ZONE 'UTC')::date AS day,
+                   avg(e.self_mood)::real                  AS self_mood,
+                   avg(u.valence_text)::real               AS est_valence,
+                   count(DISTINCT e.id)                    AS entries,
+                   count(u.id)                             AS utterances,
+                   count(e.self_mood)                      AS check_ins
+            FROM recallable_utterances u
+            JOIN entries e ON e.id = u.entry_id
+            WHERE u.created_at > now() - make_interval(days => %s)
+            GROUP BY day
+            ORDER BY day
+            """,
+            (days,),
+        ).fetchall()
+
+    def mood_window(self, start_days_ago: int, end_days_ago: int) -> dict:
+        """Averages over a span, used to compare one week against another."""
+        return self.connection.execute(
+            """
+            SELECT avg(e.self_mood)::real    AS self_mood,
+                   avg(u.valence_text)::real AS est_valence,
+                   count(e.self_mood)        AS check_ins,
+                   count(u.valence_text)     AS utterances
+            FROM recallable_utterances u
+            JOIN entries e ON e.id = u.entry_id
+            WHERE u.created_at >  now() - make_interval(days => %s)
+              AND u.created_at <= now() - make_interval(days => %s)
+            """,
+            (start_days_ago, end_days_ago),
+        ).fetchone()
+
     # deletion --------------------------------------------------------------
 
     def delete_entry(self, entry_id: int) -> None:
