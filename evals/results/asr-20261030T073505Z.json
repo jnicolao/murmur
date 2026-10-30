@@ -1,0 +1,53 @@
+{
+  "ran_at": "2026-10-30T07:35:05+00:00",
+  "sources": {
+    "synthetic": 5
+  },
+  "models": {
+    "tiny.en": {
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 183,
+        "p95_ms": 191,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    },
+    "base.en": {
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 354,
+        "p95_ms": 372,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    },
+    "small.en": {
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 1151,
+        "p95_ms": 1233,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    }
+  }
+}

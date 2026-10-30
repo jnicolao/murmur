@@ -2,7 +2,7 @@ PY := apps/api/.venv/bin/python
 UVICORN := apps/api/.venv/bin/uvicorn
 RUFF := apps/api/.venv/bin/ruff
 
-.PHONY: setup web dev db run test units eval eval-asr eval-safety eval-replies lint
+.PHONY: setup web dev db run test units eval eval-asr eval-safety eval-replies corpus recordings lint
 
 setup:
 	cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]"
@@ -34,6 +34,18 @@ eval:
 
 eval-asr:
 	$(PY) evals/run_asr.py
+
+# Real human speech to score against. CC BY 4.0, about 322 MB, kept outside
+# the repository because it is someone else's audio and far too large.
+corpus:
+	mkdir -p ~/.murmur/corpora
+	cd ~/.murmur/corpora && test -d LibriSpeech/dev-clean || \
+	  (curl -O https://www.openslr.org/resources/12/dev-clean.tar.gz && \
+	   tar xzf dev-clean.tar.gz && rm dev-clean.tar.gz)
+
+# Your own entries, turned into a test set you then correct by hand.
+recordings:
+	$(PY) apps/api/tools/export_recordings.py
 
 eval-safety:
 	$(PY) evals/run_safety.py

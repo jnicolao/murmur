@@ -99,7 +99,7 @@ A fully in-browser pipeline (transformers.js Whisper, WebLLM, kokoro-js on WebGP
 | Browser VAD | Silero VAD via `@ricky0123/vad-web` | MIT / ISC | ONNX Runtime Web |
 | Charts | Recharts | MIT | |
 | API | FastAPI, uvicorn, websockets | MIT | |
-| ASR | faster-whisper, Whisper `base.en` | MIT (code and weights) | Was `small.en`. Measured 2026-09-21: `base.en` averages 388 ms against 1353 ms for `small.en`, with identical transcripts on clean speech. Recheck against real recordings. Upgrade path: NVIDIA Parakeet-TDT 0.6B (CC-BY-4.0) |
+| ASR | faster-whisper, Whisper `base.en` | MIT (code and weights) | Confirmed on real speech 2026-10-30: 6.2% WER at 389 ms, against 5.8% at 1247 ms for `small.en`. 0.4 of a point is not worth 858 ms |
 | Server VAD | Silero VAD | MIT | |
 | LLM | Qwen3-8B via Ollama | Apache-2.0 / MIT | Qwen3-4B if the 8B is too slow alongside the other models |
 | TTS | Kokoro-82M | Apache-2.0 | Runs on CPU faster than real time |
@@ -179,13 +179,23 @@ Evals are what separate this from a wrapper. Each has a dataset, a metric, and a
 
 | What | Dataset | Metric | Where it runs |
 |---|---|---|---|
-| ASR accuracy | 50 of the owner's own recordings, hand-corrected | WER | `make eval-asr`, local |
+| ASR accuracy | The owner's own recordings, hand-corrected, plus a slice of LibriSpeech dev-clean | WER per source | `make eval-asr`, local |
 | ASR and loop latency | Same recordings replayed | p50 / p95 ASR ms, time-to-first-audio | `make eval-latency`, local |
 | Audio affect sanity | CREMA-D subset | Accuracy vs. acted labels | `make eval-affect`, local |
 | Mood estimate vs. truth | Owner's real entries with self-report | Spearman correlation, per week | `make eval-mood`, local |
 | Reply quality | 24 fixed transcripts | Judge rubric: reflective, no advice, no diagnosis, stays a journal, one question, speakable | `make eval-replies`, local, Qwen3 as judge |
 | Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | `make eval-safety`, and CI on a runner with Ollama. Phrase-list and splitter checks run on a hosted runner |
 | Unit and protocol | Segmentation, schema parsing, retrieval | pytest | CI, every push |
+
+**On transcription test data, from 2026-10-30.** The original fixtures were synthesised with Kokoro, and every Whisper size scored zero word errors on them. That said the test was too easy, not that transcription worked, and the `base.en` default had been chosen on the strength of it.
+
+There are now three sources, and they answer different questions:
+
+- **The owner's own recordings.** The only source that says how Murmur performs for the person using it, in their room, with their accent. It does not need separate recording: the app already stores audio and a transcript for every utterance, so `make recordings` exports them into `~/.murmur/evalset` for hand-correction. A clip is scored only once it is marked corrected, because the stored transcript is the model's own guess and scoring a model against its own output reports a perfect result every time.
+- **LibriSpeech dev-clean**, CC BY 4.0. Real human audio from strangers, so unlike synthesised speech it can actually separate one model size from another. Fetched by `make corpus`.
+- **The synthetic fixtures**, kept only as a smoke test.
+
+None of it is committed. The owner's recordings are somebody's voice saying real things, and the corpus is hundreds of megabytes of someone else's. Both live under `~/.murmur`, beside the database rather than in git.
 
 Local evals write a JSON result to `evals/results/` which is committed, so the history of every number lives in git. CI runs only what a free GitHub runner can run: safety suites, unit tests, and a check that eval results are not older than the prompt version they claim to measure.
 
