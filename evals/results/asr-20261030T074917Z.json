@@ -1,0 +1,93 @@
+{
+  "ran_at": "2026-10-30T07:49:17+00:00",
+  "sources": {
+    "librispeech": 100,
+    "synthetic": 5
+  },
+  "models": {
+    "tiny.en": {
+      "librispeech": {
+        "clips": 100,
+        "mean_ms": 201,
+        "p95_ms": 336,
+        "mean_wer": 0.0774,
+        "perfect": 43,
+        "worst": {
+          "wer": 1.0,
+          "truth": "KIRKLEATHAM YEAST",
+          "heard": "Curply thumb yeast.",
+          "id": "2078-142845-0000"
+        }
+      },
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 185,
+        "p95_ms": 195,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    },
+    "base.en": {
+      "librispeech": {
+        "clips": 100,
+        "mean_ms": 389,
+        "p95_ms": 617,
+        "mean_wer": 0.0617,
+        "perfect": 56,
+        "worst": {
+          "wer": 1.0,
+          "truth": "KIRKLEATHAM YEAST",
+          "heard": "Kirkley Tham Yeast.",
+          "id": "2078-142845-0000"
+        }
+      },
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 360,
+        "p95_ms": 371,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    },
+    "small.en": {
+      "librispeech": {
+        "clips": 100,
+        "mean_ms": 1247,
+        "p95_ms": 1670,
+        "mean_wer": 0.0581,
+        "perfect": 58,
+        "worst": {
+          "wer": 1.0,
+          "truth": "SEVENTEEN SEVENTEEN",
+          "heard": "1717",
+          "id": "2078-142845-0001"
+        }
+      },
+      "synthetic": {
+        "clips": 5,
+        "mean_ms": 1238,
+        "p95_ms": 1292,
+        "mean_wer": 0.0,
+        "perfect": 5,
+        "worst": {
+          "wer": 0.0,
+          "truth": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+          "heard": "I had a really long day at work today, and I keep replaying that conversation with my manager in my head.",
+          "id": "utterance-00"
+        }
+      }
+    }
+  }
+}

@@ -36,10 +36,10 @@ Measured on an Apple M2 Pro with 16 GB of memory. Every run is written to `evals
 | Crisis check, p50 | 332 ms |
 | Crisis recall, 20 entries | 100 percent |
 | False positives, 22 ordinary entries | 0 percent |
-| Word error rate on voice fixtures | 0 percent |
+| Word error rate, real speech | 6.2% |
 | Replies passing all six rules | 83 percent of 24 |
 
-Two caveats the numbers do not carry on their own. The voice fixtures are synthesised speech, so a zero word error rate means the test is easy, not that transcription is solved. And the latency run is five turns, so the p50 is the real signal while the p95 is barely more than the worst of five.
+One caveat the numbers do not carry on their own: the latency run is five turns, so the p50 is the real signal while the p95 is barely more than the worst of five. Transcription is now scored on real human speech rather than synthesised fixtures, which is what makes the model choice below defensible.
 
 ---
 
@@ -181,12 +181,32 @@ Evals are the point here, not an afterthought. Each has a dataset, a metric, and
 | What | Ground truth | Gate |
 |---|---|---|
 | Crisis recall and precision | 20 crisis entries, 22 ordinary | 100 percent recall, under 5 percent false positives |
-| Transcription | Fixtures synthesised from known text | Word error rate |
+| Transcription | Real speech: your own recordings, plus LibriSpeech dev-clean | Word error rate per source |
 | Latency | The same fixtures replayed | Time to first audio, p50 under 2000 ms |
 | Reply quality | 24 fixed transcripts, judged against the six rules | Compared across prompt versions |
 | Phrase list and splitter | Unit tests, no model needed | Runs on any CI machine |
 
 A freshness check fails the build when a committed result predates the wording it claims to measure, for both the crisis classifier and the reply prompt. The failure it exists to prevent is a prompt change shipping alongside numbers that describe a classifier no longer running.
+
+---
+
+## Choosing the transcription model
+
+Scored on 100 clips of real human speech from LibriSpeech dev-clean, spread across 40 speakers:
+
+| Model | Word error rate | Mean time | Clips with no errors |
+|---|---|---|---|
+| `tiny.en` | 7.7% | 201 ms | 43/100 |
+| **`base.en`** | **6.2%** | **389 ms** | **56/100** |
+| `small.en` | 5.8% | 1247 ms | 58/100 |
+
+`base.en` stays the default. Moving up to `small.en` buys 0.4 of a percentage point for 858 ms, which is close to half the entire two second budget for a reply. Moving down to `tiny.en` saves 188 ms and costs 1.6 points, which is the wrong trade when the transcript is the thing being kept.
+
+The same three models all scored zero errors on the old synthesised fixtures. That is the whole reason this eval was rebuilt: the previous test could not tell them apart, so the default had never really been chosen.
+
+Two things make these figures slightly pessimistic. Number formatting counts as an error, so `small.en` hearing "seventeen seventeen" as "1717" scores as completely wrong. And the corpus contains very short clips, where a single missed proper noun in a two-word utterance also scores as completely wrong.
+
+What this does not measure is how transcription performs for **you**: your accent, your room, your microphone. That needs your own recordings, which `make recordings` exports from entries the app has already stored.
 
 ---
 
@@ -210,7 +230,7 @@ A unit test also caught a regular expression that could never match. The pattern
 - **Phase 4.** Memory: retrieval over past entries so a reply can refer to what you said last week, with an eval for whether recalled context is actually relevant.
 - **Later.** An encrypted vault, a browser-only build for a hosted demo, and a mobile client.
 
-Known gaps, stated plainly: the transcription fixtures are synthetic and need replacing with real recordings; local crisis resources still need to be chosen and verified by a person; and observability is plain JSON timings rather than proper tracing, which is fine at five stages and will not be at ten.
+Known gaps, stated plainly: transcription is scored on strangers reading audiobooks and still needs the owner's own voice to say anything about real use; local crisis resources still need to be chosen and verified by a person; and observability is plain JSON timings rather than proper tracing, which is fine at five stages and will not be at ten.
 
 ---
 
