@@ -1,10 +1,12 @@
-"""Murmur Phase 2: the voice loop, the crisis path, and somewhere to keep it.
+"""The Murmur API, and the client it serves.
 
     docker compose up -d
+    make web        # builds apps/web into a static export
     apps/api/.venv/bin/uvicorn murmur.app:app --port 8000
 
-The client is still a single static page. Next.js is deferred to Phase 3,
-where the mood timeline gives a framework something real to do.
+In production this process serves everything from one origin, so there is one
+thing to run. For working on the client, `make dev` runs the Next.js dev
+server on port 3000 against this API instead.
 """
 
 from __future__ import annotations
@@ -15,11 +17,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
+from murmur.affect.trend import Window, describe
 from murmur.ws.session import Session
 
-STATIC = Path(__file__).resolve().parent / "static"
+WEB = Path(__file__).resolve().parents[2] / "web" / "out"
+DEV_ORIGIN = "http://localhost:3000"
 session: Session | None = None
 
 
@@ -35,6 +41,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Murmur", lifespan=lifespan)
 
+# Only ever the local dev server. Nothing about this application is meant to
+# be reachable from anywhere else.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[DEV_ORIGIN, "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if (WEB / "_next").is_dir():
+    app.mount("/_next", StaticFiles(directory=WEB / "_next"), name="next")
+
 
 def store():
     if session is None:
@@ -43,8 +61,15 @@ def store():
 
 
 @app.get("/")
-async def index() -> FileResponse:
-    return FileResponse(STATIC / "index.html")
+async def index():
+    page = WEB / "index.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<p style='font:16px system-ui;padding:40px'>The client has not been built. "
+            "Run <code>make web</code>, then reload.</p>",
+            status_code=503,
+        )
+    return FileResponse(page)
 
 
 @app.get("/health")
@@ -68,6 +93,40 @@ async def mood(entry_id: int, value: int = Body(..., embed=True)) -> dict:
         raise HTTPException(400, "mood is 1 to 5")
     await asyncio.to_thread(store().set_mood, entry_id, value)
     return {"ok": True}
+
+
+@app.get("/timeline")
+async def timeline(days: int = 90) -> dict:
+    """Points to plot, and a sentence only when it has been earned."""
+    keep = max(1, min(days, 365))
+    points = await asyncio.to_thread(store().daily_mood, keep)
+    recent = await asyncio.to_thread(store().mood_window, 7, 0)
+    earlier = await asyncio.to_thread(store().mood_window, 14, 7)
+
+    trend = describe(
+        Window(
+            recent["self_mood"], recent["est_valence"], recent["check_ins"], recent["utterances"]
+        ),
+        Window(
+            earlier["self_mood"],
+            earlier["est_valence"],
+            earlier["check_ins"],
+            earlier["utterances"],
+        ),
+    )
+    return {
+        "points": [
+            {
+                "day": str(point["day"]),
+                "self_mood": point["self_mood"],
+                "est_valence": point["est_valence"],
+                "entries": point["entries"],
+                "utterances": point["utterances"],
+            }
+            for point in points
+        ],
+        "trend": {"text": trend.text, "reason": trend.reason},
+    }
 
 
 @app.delete("/entries/{entry_id}")

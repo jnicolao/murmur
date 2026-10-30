@@ -121,6 +121,8 @@ make eval         # end to end latency, writes to evals/results
 make eval-asr     # transcription speed and accuracy across model sizes
 make eval-safety  # the crisis suites, and the freshness check CI gates on
 make eval-replies # judge the reflective reply against its six rules
+make web          # build the client
+make dev          # API on :8000 and the client dev server on :3000
 make lint
 ```
 
@@ -147,9 +149,9 @@ Everything is free and open source. No component requires a paid API or an accou
 | Text to speech | Kokoro-82M | Apache-2.0 |
 | API | FastAPI over one WebSocket | MIT |
 | Database | Postgres 16 with pgvector | PostgreSQL |
-| Client | One static page, no build step | |
+| Client | Next.js, TypeScript, Tailwind, Recharts | MIT |
 
-The client is deliberately one page for now. A framework arrives when the mood timeline gives it something real to do, rather than to render a single button.
+The client is a static export served by the API process, so running Murmur is still one command. `make dev` runs the Next.js dev server against the API when working on the interface.
 
 ---
 

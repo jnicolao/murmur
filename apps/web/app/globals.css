@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-indigo-deep: #3D437A;
+  --color-lavender: #C2B6FF;
+  --color-blush: #F5A7A7;
+  --color-blush-soft: #FBE9E9;
+  --color-sage: #D6F0E4;
+  --color-ground: #F6F6F6;
+  --color-ink: #2F2F3B;
+  --color-muted: #6B6C80;
+  --color-line: #E2E0EC;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+}

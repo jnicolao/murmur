@@ -23,3 +23,8 @@ apps/api/resources.json
 .DS_Store
 .idea/
 .vscode/
+
+# next.js build output
+apps/web/out/
+apps/web/.next/
+next-env.d.ts

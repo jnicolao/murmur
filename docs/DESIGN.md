@@ -142,7 +142,9 @@ Two signals are estimated per utterance and one is reported by the user.
 - **Prosody**: pitch median and spread, speech rate, and pause ratio, straight from the waveform. Built 2026-09-22.
 - **Self-report**: the 1 to 5 check-in after each session. This is the ground truth. Built in Phase 2.
 
-The timeline shows self-report as the primary line and the estimated valence as a secondary line. The product never tells the user "you are sad." It says things like "you sounded flatter this week than last," and only when the fused estimate and the self-report agree in direction. Where they disagree, the chart shows both and says nothing.
+The timeline shows self-report as the primary line and the estimated valence as a secondary line. The product never tells the user "you are sad." It says things like "you sounded flatter this week than last," and only when the estimate and the self-report agree in direction. Where they disagree, the chart shows both and says nothing.
+
+Built 2026-09-29. The rule is enforced in `affect/trend.py` and covered by tests that assert silence in four separate cases: not enough entries, a steady week, only one of the two signals moving, and the two disagreeing. A further test asserts that whatever sentence is produced talks about how someone *sounded* and never about how they *are*. Crisis entries are excluded from the timeline entirely, by the same view that keeps them out of retrieval.
 
 Fusion for v1 is a plain weighted average, weights chosen on the dev set (section 8). Anything fancier is deferred until the eval shows the simple version is the bottleneck.
 
@@ -253,7 +255,7 @@ Three things came out of building it:
 
 **On resources.** Only an international directory ships by default. Local helpline numbers are not hardcoded, because a wrong crisis number is worse than none. They go in `apps/api/resources.json` and are ignored unless marked verified. This answers half of open question 1; the other half still needs a person to pick and check the numbers.
 
-**On Next.js.** Deferred again, to Phase 3. Phase 2's screens are an entry list and a delete button, which is not enough to justify a build step. The mood timeline is.
+**On Next.js.** Deferred from Phase 2 to Phase 3, and delivered there on 2026-09-29 with the mood timeline. The client is a static export served by the API process, so production is still one thing to run; `make dev` runs the Next.js dev server against the API for working on it.
 
 **Phase 3 — Affect and timeline (2 weeks). In progress.** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart.
 
