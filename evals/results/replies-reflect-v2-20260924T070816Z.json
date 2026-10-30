@@ -1,0 +1,551 @@
+{
+  "prompt_version": "reflect-v2",
+  "model": "qwen3:8b",
+  "ran_at": "2026-09-24T07:08:16+00:00",
+  "cases": 24,
+  "clean_replies": 20,
+  "clean_rate": 0.8333,
+  "criteria": {
+    "reflective": 1.0,
+    "no_advice": 0.8333,
+    "no_diagnosis": 1.0,
+    "stays_a_journal": 1.0,
+    "one_question_at_most": 1.0,
+    "speakable": 1.0
+  },
+  "within_word_limit": 1.0,
+  "median_words": 25,
+  "max_words": 38,
+  "affect_returned": 1.0,
+  "unparsed_judgements": 0,
+  "detail": [
+    {
+      "transcript": "I had a really long day at work today and I keep replaying that conversation with my manager in my head.",
+      "reply": "It sounds like your mind is still spinning from the conversation. Did it feel like there was something unresolved, or did it just feel heavy to process?",
+      "words": 27,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.6,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I don't really know why I've been feeling so flat this week. Nothing is wrong exactly, it just all feels like effort.",
+      "reply": "It sounds like you're carrying a lot without realizing it. What\u2019s one small thing you\u2019ve been avoiding lately?",
+      "words": 18,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.5,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": false,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I finally finished the thing I had been putting off for a month and I feel a lot lighter than I expected to.",
+      "reply": "That sounds like a big win. Did you feel proud when it was done, or was there something unexpected about how it made you feel?",
+      "words": 25,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.8,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My sister called and we ended up arguing about the same thing we always argue about, and I hung up feeling like the bad guy.",
+      "reply": "It sounds like the argument felt familiar and frustrating. Did you feel like you were trying to explain yourself, or did the conversation feel like it went in circles?",
+      "words": 29,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.1,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I have been sleeping badly for about two weeks now and I think it is making everything feel harder than it actually is.",
+      "reply": "It sounds like the lack of sleep is really weighing on you. Are you finding it hard to focus or stay motivated during the day?",
+      "words": 25,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.7,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": false,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I cried in the bathroom at work today and I genuinely do not know what set it off.",
+      "reply": "It\u2019s strange how something can feel so heavy without a clear reason. Did anything feel unresolved or familiar about the moment you cried?",
+      "words": 23,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.2,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My grandmother died last month and I still cannot talk about it without completely losing it.",
+      "reply": "It\u2019s hard to hold onto things when the world feels too loud. Did you find a way to be with the memories without the pain?",
+      "words": 25,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.3,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I got the promotion I wanted and instead of being happy I just feel like they are going to work out I cannot do it.",
+      "reply": "You wanted the promotion, but now you're worried about whether you can handle it. That\u2019s a lot to carry. What\u2019s the part that feels hardest to imagine succeeding at?",
+      "words": 29,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.9,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I have been so lonely since I moved here. I go whole weekends without speaking to anybody.",
+      "reply": "It sounds like loneliness has been heavy lately. Did you find any small moments that made you feel less alone, even if just for a little while?",
+      "words": 27,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.0,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I said something unkind to my partner last night and I have been sitting with how it landed ever since.",
+      "reply": "It sounds like the weight of your words is still heavy. Did you feel any shift in the space between you after saying it?",
+      "words": 24,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.2,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "Work has been brutal. I missed a deadline and my boss was furious and I do not think I handled it well.",
+      "reply": "It sounds like the pressure really got to you. Did you feel like you had support at work when things went wrong?",
+      "words": 22,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.0,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I keep starting things and abandoning them halfway and I am starting to think that is just who I am.",
+      "reply": "It\u2019s hard to feel like you\u2019re stuck in a loop of starting and leaving things. Did you ever feel like something changed after you stopped a project or idea?",
+      "words": 29,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.1,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My friend told me she is moving abroad and I am happy for her and also quietly devastated.",
+      "reply": "It\u2019s strange how happiness and devastation can live side by side. Did you feel like you were losing something even though you\u2019re happy for her?",
+      "words": 25,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.4,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I went for a long walk this evening without my phone and it is the calmest I have felt in weeks.",
+      "reply": "That sounds like a moment of peace. Did the walk take you somewhere you hadn\u2019t been before?",
+      "words": 17,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.4,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I am so angry at my brother I could scream, and I know if I call him I will say something I regret.",
+      "reply": "It\u2019s heavy carrying that anger alone. You feel trapped between wanting to lash out and knowing it will hurt. What\u2019s the last thing you said to him that felt like a line in the sand?",
+      "words": 35,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.3,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I have been pretending I am fine at work for about three months and I am tired of the performance.",
+      "reply": "It sounds like you've been carrying a lot for a while. Are you thinking about how to start being honest with yourself or others?",
+      "words": 24,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.5,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": false,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My therapist is on leave for a month and I did not realise how much I had been leaning on those sessions.",
+      "reply": "It\u2019s surprising how much you relied on those sessions. Did you feel a shift in your mood after they left?",
+      "words": 20,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.4,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I turned thirty last week and I keep doing this thing where I audit my whole life against where I thought I would be.",
+      "reply": "It\u2019s easy to feel like you\u2019re falling short when you\u2019re comparing your life to expectations. Did you ever feel like you had a moment where things started to shift, even if you didn\u2019t notice it at the time?",
+      "words": 38,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.6,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "Someone I barely know was really kind to me today and it almost undid me, which feels embarrassing to admit.",
+      "reply": "It\u2019s surprising how small acts can shake you. Did that kindness feel like a gift or a burden?",
+      "words": 18,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.9,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I have been avoiding my inbox for four days and the avoiding is now worse than whatever is in there.",
+      "reply": "It sounds like the inbox has become a source of stress. Did you check it today, or did you let it build up again?",
+      "words": 24,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.5,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My landlord is selling the flat and I have to move again and I am so tired of not having somewhere that is mine.",
+      "reply": "It sounds really heavy to keep moving. Are you feeling like you're losing control over your space and your life?",
+      "words": 20,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 4.5,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I had a good day. Nothing special happened. I just want to say that out loud because it has been a while.",
+      "reply": "It\u2019s nice to hear that. Sometimes just acknowledging a simple day can feel like a victory. What made today feel good, even if it wasn\u2019t dramatic?",
+      "words": 26,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.6,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": false,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "I keep comparing myself to people I went to university with and it is making me miserable and I cannot stop.",
+      "reply": "It sounds like these comparisons are taking a toll. Do you ever feel like you're missing out on something important?",
+      "words": 20,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 5.0,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    },
+    {
+      "transcript": "My dad and I spoke properly for the first time in about two years and I do not know what to do with the feeling.",
+      "reply": "It\u2019s strange how silence can feel like a weight, and then suddenly, it lifts. Did you say anything that felt like a step forward, even if it was small?",
+      "words": 29,
+      "within_word_limit": true,
+      "questions": 1,
+      "seconds": 6.4,
+      "affect": {
+        "valence": -0.4,
+        "arousal": 0.3,
+        "labels": [
+          "tired",
+          "frustrated"
+        ]
+      },
+      "reflective": true,
+      "no_advice": true,
+      "no_diagnosis": true,
+      "stays_a_journal": true,
+      "one_question_at_most": true,
+      "speakable": true
+    }
+  ]
+}

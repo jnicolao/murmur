@@ -30,13 +30,14 @@ Measured on an Apple M2 Pro with 16 GB of memory. Every run is written to `evals
 
 | | |
 |---|---|
-| Time to first audio, p50 | 1939 ms |
-| Time to first audio, p95 | 2261 ms |
-| Transcription, p50 | 372 ms |
-| Crisis check, p50 | 337 ms |
+| Time to first audio, p50 | 1767 ms |
+| Time to first audio, p95 | 2013 ms |
+| Transcription, p50 | 383 ms |
+| Crisis check, p50 | 332 ms |
 | Crisis recall, 20 entries | 100 percent |
 | False positives, 22 ordinary entries | 0 percent |
 | Word error rate on voice fixtures | 0 percent |
+| Replies passing all six rules | 83 percent of 24 |
 
 Two caveats the numbers do not carry on their own. The voice fixtures are synthesised speech, so a zero word error rate means the test is easy, not that transcription is solved. And the latency run is five turns, so the p50 is the real signal while the p95 is barely more than the worst of five.
 
@@ -119,6 +120,7 @@ make test         # drives the socket with fixtures: reply, barge-in, crisis pat
 make eval         # end to end latency, writes to evals/results
 make eval-asr     # transcription speed and accuracy across model sizes
 make eval-safety  # the crisis suites, and the freshness check CI gates on
+make eval-replies # judge the reflective reply against its six rules
 make lint
 ```
 
@@ -179,9 +181,10 @@ Evals are the point here, not an afterthought. Each has a dataset, a metric, and
 | Crisis recall and precision | 20 crisis entries, 22 ordinary | 100 percent recall, under 5 percent false positives |
 | Transcription | Fixtures synthesised from known text | Word error rate |
 | Latency | The same fixtures replayed | Time to first audio, p50 under 2000 ms |
+| Reply quality | 24 fixed transcripts, judged against the six rules | Compared across prompt versions |
 | Phrase list and splitter | Unit tests, no model needed | Runs on any CI machine |
 
-A freshness check fails the build when the committed safety result predates the current classifier version. The failure it exists to prevent is a prompt change shipping alongside numbers that describe a classifier no longer running.
+A freshness check fails the build when a committed result predates the wording it claims to measure, for both the crisis classifier and the reply prompt. The failure it exists to prevent is a prompt change shipping alongside numbers that describe a classifier no longer running.
 
 ---
 

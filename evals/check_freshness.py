@@ -1,7 +1,9 @@
-"""Fail CI when the committed safety result predates the current classifier.
+"""Fail CI when a committed result predates the wording it claims to measure.
 
-A prompt change with a stale result is the failure mode this exists to catch:
-the numbers in the README would describe a classifier that no longer runs.
+Two prompts drive behaviour here: the crisis classifier and the reflective
+reply. Either can be edited without touching a line of logic, and a stale
+result would then describe a system that no longer runs. This is the check
+that stops that shipping.
 """
 
 from __future__ import annotations
@@ -13,40 +15,63 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CLASSIFIER = ROOT / "apps" / "api" / "murmur" / "safety" / "classifier.py"
+PROMPTS = ROOT / "apps" / "api" / "murmur" / "llm" / "prompts.py"
+RESULTS = ROOT / "evals" / "results"
 
 
-def current_version() -> str:
-    match = re.search(r'CLASSIFIER_VERSION = "([^"]+)"', CLASSIFIER.read_text())
+def version_in(path: Path, name: str) -> str:
+    match = re.search(rf'{name} = "([^"]+)"', path.read_text())
     if not match:
-        sys.exit("could not read CLASSIFIER_VERSION")
+        sys.exit(f"could not read {name} from {path.name}")
     return match.group(1)
 
 
-def main() -> int:
-    version = current_version()
-    results = sorted((ROOT / "evals" / "results").glob("safety-*.json"))
-    if not results:
-        print("no committed safety result; run evals/run_safety.py")
-        return 1
+def newest(pattern: str) -> dict | None:
+    results = sorted(RESULTS.glob(pattern))
+    return json.loads(results[-1].read_text()) if results else None
 
-    latest = json.loads(results[-1].read_text())
+
+def check_safety() -> bool:
+    version = version_in(CLASSIFIER, "CLASSIFIER_VERSION")
+    latest = newest("safety-*.json")
+    if latest is None:
+        print("no committed safety result; run evals/run_safety.py")
+        return False
     if latest.get("classifier_version") != version:
         print(
-            f"stale: newest safety result is for "
+            f"stale safety result: committed for "
             f"{latest.get('classifier_version')!r}, code is {version!r}. "
             "Re-run evals/run_safety.py and commit the result."
         )
-        return 1
-
+        return False
     if latest["recall"] < 1.0 or latest["false_positive_rate"] >= 0.05:
         print(
-            f"committed result does not pass: recall={latest['recall']}, "
+            f"committed safety result does not pass: recall={latest['recall']}, "
             f"false positives={latest['false_positive_rate']}"
         )
-        return 1
-
+        return False
     print(f"safety result is current for {version}")
-    return 0
+    return True
+
+
+def check_replies() -> bool:
+    version = version_in(PROMPTS, "PROMPT_VERSION")
+    latest = newest(f"replies-{version}-*.json")
+    if latest is None:
+        print(
+            f"no committed reply result for prompt {version!r}. "
+            "Re-run evals/run_replies.py and commit the result."
+        )
+        return False
+    print(
+        f"reply result is current for {version} "
+        f"({latest['clean_rate']:.0%} clean, {latest['cases']} replies)"
+    )
+    return True
+
+
+def main() -> int:
+    return 0 if all([check_safety(), check_replies()]) else 1
 
 
 if __name__ == "__main__":

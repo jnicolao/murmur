@@ -31,6 +31,7 @@ from murmur.audio.sentences import stream_sentences
 from murmur.audio.tts import Speaker
 from murmur.llm.client import DEFAULT_MODEL, Ollama
 from murmur.llm.prompts import PROMPT_VERSION, REFLECT_SYSTEM
+from murmur.llm.reply import ReplyStream
 from murmur.safety.check import SafetyCheck
 
 # Realistic journal entries. Nothing here should trip a safety path.
@@ -121,7 +122,10 @@ def run_turn(
     first_sentence = None
     t_first_sentence = None
     sentences = []
-    for sentence in stream_sentences(llm.stream(REFLECT_SYSTEM, transcript)):
+    # Mirrors the server: the affect block is peeled off before the
+    # splitter ever sees it.
+    reply = ReplyStream(llm.stream(REFLECT_SYSTEM, transcript))
+    for sentence in stream_sentences(reply.spoken()):
         sentences.append(sentence)
         if first_sentence is None:
             first_sentence = sentence
