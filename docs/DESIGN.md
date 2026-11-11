@@ -1,7 +1,7 @@
 # Murmur — Design Document
 
 **Tagline:** A space for your inner voice.
-**Status:** Draft v1, 2026-09-14
+**Status:** Closed at v1, 2026-11-11. First drafted 2026-09-14.
 **Owner:** Justine Nicolao
 **License target:** Apache-2.0, every dependency free and open source, no paid APIs.
 
@@ -40,7 +40,7 @@ The interesting engineering is in the seams between those promises: streaming au
 
 ### Explicitly out of v1
 
-- Mobile app (Flutter). The portfolio card currently promises it; the card will be updated.
+- Mobile app (Flutter).
 - Cloud sync, multi-user, accounts.
 - Fine-tuning on the user's data.
 - Voice cloning or custom voices.
@@ -71,7 +71,7 @@ Browser (Next.js)                        Server (FastAPI, Python)
 └──────────────────────┘                │ TTS: Kokoro-82M                 │
                                         └──────────┬──────────────────────┘
                                                    │
-                                        Postgres + pgvector · Langfuse (self-hosted)
+                                        Postgres + pgvector
 ```
 
 ### The streaming loop, step by step
@@ -107,10 +107,10 @@ A fully in-browser pipeline (transformers.js Whisper, WebLLM, kokoro-js on WebGP
 | Prosody | librosa (`yin` pitch, RMS energy), numpy | ISC / BSD | Was `pyin`. Measured 2026-09-22: `pyin` takes about 37 s for a 6.5 s clip, `yin` takes 8 ms. An energy-based voicing mask replaces `pyin`'s voicing probabilities |
 | Embeddings | bge-m3 via sentence-transformers | MIT / Apache-2.0 | Same as Harmonizer |
 | Database | Postgres 16 + pgvector | PostgreSQL license | Docker compose |
-| Observability | Langfuse, self-hosted | MIT (core) | Same as Harmonizer |
+| Observability | JSON timings per stage | | Langfuse, self-hosted, was planned and not built. See section 9 |
 | Tooling | uv, ruff, pytest, pnpm | MIT / Apache-2.0 | |
 
-Models known to be non-commercial and therefore excluded: audeering's dimensional emotion model (CC-BY-NC-SA) and the RAVDESS dataset (CC-BY-NC). CREMA-D (ODC-BY) is the free dataset used for the audio affect sanity check.
+Models known to be non-commercial and therefore excluded: audeering's dimensional emotion model (CC-BY-NC-SA) and the RAVDESS dataset (CC-BY-NC). CREMA-D (ODC-BY) was the free dataset chosen for the audio affect sanity check, which was never built.
 
 Hardware target: Apple M2 Pro, 16 GB. Budget: Qwen3-8B q4 about 5 GB, Whisper small about 500 MB, Kokoro about 300 MB, wav2vec2 about 1.2 GB, embeddings about 2 GB. Everything fits with headroom, but not all at once under load; see risks.
 
@@ -138,7 +138,7 @@ Raw audio lives on disk under a per-entry folder. Deleting an entry deletes its 
 Two signals are estimated per utterance and one is reported by the user.
 
 - **Text affect**: valence and arousal on a -1 to 1 scale plus labels, from the model's structured output. Built 2026-09-24. The block trails the spoken reply behind a sentinel, so it costs no extra call and cannot reach the speech synthesiser.
-- **Audio affect**: categorical output from the wav2vec2 model mapped to the same valence/arousal space. Not built yet, and gated on confirming the weight licence.
+- **Audio affect**: categorical output from the wav2vec2 model mapped to the same valence/arousal space. Not built, and dropped at v1: see Phase 3.
 - **Prosody**: pitch median and spread, speech rate, and pause ratio, straight from the waveform. Built 2026-09-22.
 - **Self-report**: the 1 to 5 check-in after each session. This is the ground truth. Built in Phase 2.
 
@@ -180,12 +180,12 @@ Evals are what separate this from a wrapper. Each has a dataset, a metric, and a
 | What | Dataset | Metric | Where it runs |
 |---|---|---|---|
 | ASR accuracy | The owner's own recordings, hand-corrected, plus a slice of LibriSpeech dev-clean | WER per source | `make eval-asr`, local |
-| ASR and loop latency | Same recordings replayed | p50 / p95 ASR ms, time-to-first-audio | `make eval-latency`, local |
-| Audio affect sanity | CREMA-D subset | Accuracy vs. acted labels | `make eval-affect`, local |
-| Mood estimate vs. truth | Owner's real entries with self-report | Spearman correlation, per week | `make eval-mood`, local |
+| ASR and loop latency | Recorded utterances replayed | p50 / p95 ASR ms, time-to-first-audio | `make eval`, local |
+| Audio affect sanity | CREMA-D subset | Accuracy vs. acted labels | Not built. The audio model it would check was dropped at v1 |
+| Mood estimate vs. truth | Owner's real entries with self-report | Spearman correlation, per week | Not built. Needs four weeks of real entries, and none exist |
 | Reply quality | 24 fixed transcripts | Judge rubric: reflective, no advice, no diagnosis, stays a journal, one question, speakable | `make eval-replies`, local, Qwen3 as judge |
-| Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | `make eval-safety`, and CI on a runner with Ollama. Phrase-list and splitter checks run on a hosted runner |
-| Unit and protocol | Segmentation, schema parsing, retrieval | pytest | CI, every push |
+| Safety | Crisis and non-crisis phrase suites | Recall on crisis, false-positive rate on non-crisis | `make eval-safety`, local. CI cannot run the model, so it gates on the committed result through the freshness check |
+| Model-free checks | Phrase list, splitter, prosody, affect block, timeline rule, word error rate | pytest | CI, every push |
 
 **On transcription test data, from 2026-10-30.** The original fixtures were synthesised with Kokoro, and every Whisper size scored zero word errors on them. That said the test was too easy, not that transcription worked, and the `base.en` default had been chosen on the strength of it.
 
@@ -205,7 +205,9 @@ Prompt changes require re-running the reply and safety evals before merge. This 
 
 ## 9. Observability
 
-Every turn is a Langfuse trace with spans for VAD, ASR, affect, safety, retrieval, LLM, and each TTS sentence. The time-to-first-audio number in the eval table is computed from these spans, not from a separate stopwatch. Traces are stored locally in the self-hosted Langfuse and contain transcripts, so the same delete-everything action that wipes entries also wipes traces.
+**Planned:** every turn a Langfuse trace with spans for VAD, ASR, affect, safety, retrieval, LLM, and each TTS sentence, stored locally and wiped by the same delete-everything action as entries.
+
+**Built:** timings per stage, measured with a monotonic clock in the latency eval and sent to the client with each turn, written to JSON under `evals/results/`. Langfuse was never wired up. At five stages JSON timings read fine, and running a second service to trace them would have cost memory the machine did not have. It would be worth adding at ten stages, not at five.
 
 ---
 
@@ -214,26 +216,30 @@ Every turn is a Langfuse trace with spans for VAD, ASR, affect, safety, retrieva
 ```
 murmur/
 ├── apps/
-│   ├── web/              # Next.js, from Phase 2
+│   ├── web/              # Next.js client, built as a static export
 │   └── api/              # FastAPI
 │       ├── murmur/
-│       │   ├── audio/    # asr, tts, sentence splitting  (vad, prosody later)
-│       │   ├── llm/      # ollama client, prompts (versioned)
+│       │   ├── audio/    # asr, tts, sentence splitting
+│       │   ├── affect/   # prosody, and when the timeline may speak
+│       │   ├── llm/      # ollama client, versioned prompts, the affect block
+│       │   ├── safety/   # phrase list, classifier, fixed crisis response
+│       │   ├── store/    # schema, migrations, persistence
 │       │   ├── ws/       # protocol, session loop
-│       │   ├── static/   # the Phase 1 client, one page
 │       │   └── app.py
+│       ├── tools/        # seed data, export of the owner's recordings
 │       └── tests/
-│       # affect/, safety/, memory/ arrive with the phase that needs them
 ├── evals/
-│   ├── datasets/         # CREMA-D subset manifest, phrase suites, fixed transcripts
+│   ├── datasets/         # crisis and ordinary suites, reply transcripts
 │   ├── results/          # committed JSON, one file per eval per run
+│   ├── corpus.py         # where transcription clips come from
 │   └── run_*.py
 ├── docs/
-│   ├── DESIGN.md         # this file
-│   └── writeups/         # one post per hard problem
-├── docker-compose.yml    # postgres+pgvector, langfuse
+│   └── DESIGN.md         # this file
+├── docker-compose.yml    # postgres with pgvector
 ├── Makefile
 └── README.md
+
+No `memory/` module, because Phase 4 was not built, and no `docs/writeups/`, because section 12's writeups were not written.
 ```
 
 ---
@@ -251,7 +257,7 @@ Two changes came out of the measurement, both from the first risk in section 13:
 - **ASR was half the budget.** `small.en` took 1212 ms per utterance. `base.en` takes 371 ms and produced identical transcripts on the fixtures. `base.en` is now the default. The fixtures are synthesised speech and therefore easy, so this needs rechecking once real recordings exist.
 - **A long first sentence delayed the first sound by over a second.** Kokoro returns no audio until a whole unit is synthesised, so the splitter now cuts a long run at a clause boundary rather than waiting for the full stop. Later units keep arriving while the first one plays.
 
-Langfuse is not wired up yet. Phase 1 has five stages and timings are written straight to JSON, which answers the same question without running a second service. It arrives when there are enough stages to be worth tracing.
+Langfuse was not wired up in Phase 1. With five stages, timings written straight to JSON answer the same question without running a second service. It never arrived: the project closed at v1 still at five stages, which is about where JSON timings stop being enough.
 
 **Phase 2 — Safety and persistence (1 week). Done 2026-09-21.** Crisis path, system prompt rules, Postgres schema, entry list, delete-everything.
 
@@ -267,7 +273,7 @@ Three things came out of building it:
 
 **On Next.js.** Deferred from Phase 2 to Phase 3, and delivered there on 2026-09-29 with the mood timeline. The client is a static export served by the API process, so production is still one thing to run; `make dev` runs the Next.js dev server against the API for working on it.
 
-**Phase 3 — Affect and timeline (2 weeks). In progress.** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart.
+**Phase 3 — Affect and timeline (2 weeks). Closed at v1, 2026-11-11, with its measurement outstanding.** Prosody features, audio model, text schema, fusion, self-report check-in, the mood chart.
 
 Prosody landed 2026-09-22. Two assumptions in this document were wrong and were corrected by measuring:
 
@@ -290,25 +296,34 @@ The risk was that asking for structure would degrade the reply, which is the act
 | Median words | 24 | 25 |
 | Affect block returned | not applicable | 100% |
 
-Nothing regressed and the block comes back every time. With 24 transcripts a four point move is a single reply, so the claim worth making is that quality held, not that it improved. Giving advice remains the weakest rule at 83%, unchanged by this work and worth its own issue. Done when: four weeks of the owner's own entries exist and the mood eval reports a Spearman number, whatever it is.
+Nothing regressed and the block comes back every time. With 24 transcripts a four point move is a single reply, so the claim worth making is that quality held, not that it improved. Giving advice remains the weakest rule at 83%, unchanged by this work.
 
-**Phase 4 — Memory and evals (2 weeks).** pgvector retrieval, memory in the prompt, reply-quality judge, ASR and latency evals, results committed. Done when: every row in the eval table has a number in git and the README shows them.
+The mood timeline landed 2026-09-29, with the rule for when it may speak set out in section 6. The transcription eval was rebuilt on real speech on 2026-10-30, which confirmed `base.en` for a stated reason rather than by accident.
 
-**Phase 5 — After v1, pick one.** Browser-only WebGPU runtime for a hosted live demo; encrypted vault with SQLCipher or pgcrypto; nightly wind-down mode; Flutter app.
+**What Phase 3 did not do.** Its done-when was a Spearman number between the estimate and four weeks of the owner's own ratings. That needs four weeks of real entries, and none exist, so the number was never produced. Two pieces were dropped rather than deferred:
 
-Sequencing against Harmonizer: the original plan gated Phase 1 on Harmonizer v1 shipping. Set aside on 2026-09-21 by choice, with Harmonizer still unstarted. The risk that neither project finishes is unchanged and is the one in section 13 worth watching.
+- **The audio emotion model.** Prosody and text already give two independent signals, the weight licence was never confirmed, and it would add 1.2 GB to a machine that was already swapping during development.
+- **Fusion.** Choosing how to weight prosody against text needs exactly the data that does not exist. Fusing without it would be a guess presented as an estimate. The right order is to measure the text estimate first, then add prosody only if it improves the correlation.
+
+**Phase 4 — Memory and evals (2 weeks). Not built.** pgvector retrieval, memory in the prompt, reply-quality judge, ASR and latency evals, results committed. Done when: every row in the eval table has a number in git and the README shows them.
+
+The eval half of this phase was built along the way, because each earlier phase needed it: the reply-quality judge in Phase 3, the transcription and latency evals in Phase 1, all with committed results. The memory half was not started. The one eval row without a number is the mood estimate, for the reason given under Phase 3.
+
+**Phase 5 — After v1, pick one. Not started.** Browser-only WebGPU runtime for a hosted live demo; encrypted vault with SQLCipher or pgcrypto; nightly wind-down mode; Flutter app.
+
+Sequencing against Harmonizer: the original plan gated Phase 1 on Harmonizer v1 shipping. That gate was set aside on 2026-09-21 by choice, with Harmonizer still unstarted. Both projects then reached v1: Harmonizer closed on 2026-11-09 and Murmur on 2026-11-11, so the risk that neither would finish did not materialise.
 
 ---
 
 ## 12. Portfolio presentation
 
-The models cannot run on free hosting, so the portfolio card links to:
+The models cannot run on free hosting, so the plan was for the portfolio card to link to:
 
-- A 60-second screen recording of a real session, with the transcript and timeline visible.
-- The repo, whose README leads with the eval table and the architecture diagram.
-- Writeups in `docs/writeups/`, one per hard problem: the streaming loop and barge-in, fusing two affect signals, memory without creepiness, evaluating a journal.
+- A 60-second screen recording of a real session, with the transcript and timeline visible. **Not made.**
+- The repo, whose README leads with the eval table and the architecture diagram. **Done.** The README leads with results and closes with what it does not do.
+- Writeups in `docs/writeups/`, one per hard problem. **Not written.** The README's "what measuring changed" section carries the substance of them in short form.
 
-The portfolio card stack list changes to: Next.js, FastAPI, Whisper, Qwen3, Kokoro, pgvector, Langfuse. Flutter, OpenAI, and Supabase are removed.
+The card's stack list should read Next.js, FastAPI, Whisper, Qwen3, Kokoro, pgvector. The original list here named Langfuse, which was never built.
 
 ---
 
@@ -321,14 +336,16 @@ The portfolio card stack list changes to: Next.js, FastAPI, Whisper, Qwen3, Koko
 | The affect model weight license is not what Hugging Face says | Medium | Verify before Phase 3. Prosody-only is the fallback. |
 | Safari lacks AudioWorklet or VAD support in some configuration | Low | Develop and demo on Chrome. Note the requirement in the README. |
 | Scope creep toward "companion" | High | Section 2 non-goals and the 60-word reply cap. Every feature request is checked against "is this a journal?" |
-| The latency budget runs out as stages are added | High | Safety already costs 337 ms of the 1939 ms p50. Phase 3 affect scoring must run beside the reply, not before it. |
-| Building this while Harmonizer is unfinished | High | The section 11 gate was set aside on 2026-09-21 and Harmonizer has no commits. Nothing currently mitigates this. |
+| The latency budget runs out as stages are added | High | Resolved. Prosody runs on a separate thread and text affect rides on the reply's own model call, so Phase 3 added nothing to the critical path. Final p50 was 1767 ms against the 2000 ms target. |
+| Building this while Harmonizer is unfinished | High | Resolved. Harmonizer reached v1 on 2026-11-09 and Murmur on 2026-11-11. |
 
 ---
 
 ## 14. Open questions
 
-1. Default helpline list: which country or countries should ship in config?
-2. Should raw audio be kept at all after transcription, or only for the eval set? Keeping it enables re-scoring with better affect models later; deleting it is simpler and more private. Current lean: keep, with a per-entry delete and a setting to disable.
-3. Should the check-in be a 1 to 5 scale or two sliders (valence and energy)? Two sliders give better ground truth for the fusion eval but add friction. Current lean: 1 to 5 in v1.
-4. Reply voice: Kokoro ships several voices. Pick one calm voice and do not offer a chooser in v1.
+All four were settled by what got built.
+
+1. **Default helpline list.** None by country. One international directory ships, findahelpline.com. Local numbers are per-installation configuration in a git-ignored `resources.json`, ignored by the app until marked verified, because Murmur runs wherever its user is and a wrong crisis number is worse than none.
+2. **Keeping raw audio.** Kept by default, as Opus under `~/.murmur/audio`, deleted with its entry, and switched off entirely by `MURMUR_KEEP_AUDIO=0`. Keeping it turned out to matter: it is what lets an owner's own entries become a transcription test set without a separate recording session.
+3. **Check-in scale.** One to five, shipped. Two sliders would have given the fusion eval better ground truth, but fusion was never built, so the extra friction would have bought nothing.
+4. **Reply voice.** One calm voice, Kokoro's `af_heart`, and no chooser.
